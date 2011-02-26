@@ -1,0 +1,65 @@
+@name Worker Tests
+@persist LMB RMB Use Selected Money Board:entity [HoloCreated UnitPrices]:array Size:vector
+
+#Snapping from Board is now fixed
+#You can freely move around the board and rotate it
+
+if(first())
+{
+    UnitPrices = array(200, 350, 300) #<- Temporary
+    Selected = 1 #I guess selected is the unit ID ?
+    Money = 100000
+    Board = entity():isWeldedTo()
+    Size = Board:boxSize()
+    timer("CheckInput", 20) #50 ops average
+    timer("GhostUpdate", 100)
+    
+    #64 because units will use the range 0-63
+    holoCreate(64, vec(0, 0, 0), vec(2, 2, 2), ang(), vec(255, 255, 255), "cube")
+    holoAlpha(64, 100)
+}
+elseif(clk("GhostUpdate"))
+{  
+    if(owner():aimEntity() == Board)
+    {
+        Local = toLocal(owner():aimPos(), ang(), Board:pos(), Board:angles()) / Size
+        #Local contains the 2D coordinates of the board ranging from (-1, -1) to (1, 1), whatever angle or position
+        #the board have (formula taken from graphics tablet code)
+        #Now let's say we want 8 * 8 (64) units :
+        Local = floor(Local * 8) + 0.5 #We add 0.5 to fit into the board (try removing it to see what I mean)
+        GhostSnap = Board:toWorld(((Local / 8) * Size):setZ(17))
+        holoPos(64, GhostSnap)
+        holoAng(64, Board:angles())
+    }
+    else
+    {
+        holoPos(64, vec(-10000, -10000, -10000))
+    }
+    timer("GhostUpdate", 100)
+}
+elseif(clk("CheckInput"))
+{
+    LMB = owner():keyAttack1()
+    RMB = owner():keyAttack2()
+    Use = owner():keyUse()
+    if($RMB & RMB & owner():aimEntity() == Board)
+    {
+        Local = toLocal(owner():aimPos(), ang(), Board:pos(), Board:angles()) / Size + 0.5
+        Local = floor(Local * 8)
+        ID = Local:y() * 8 + Local:x() #Accessing to 2-dimensional array
+        if(Money >= UnitPrices[Selected, number] & !HoloCreated[ID, number]) #Create unit
+        {
+            Local = ((Local + 0.5) / 8 - 0.5) * Size
+            Snap = Board:toWorld(Local:setZ(17))
+            holoCreate(ID, Snap, vec(2, 2, 2), Board:angles(), vec(255, 255, 255), "cube")
+            holoParent(ID, Board)
+            HoloCreated[ID, number] = 1
+        }
+        elseif(HoloCreated[ID, number]) #Destroy unit
+        {
+            holoDelete(ID)
+            HoloCreated[ID, number] = 0
+        }
+    }
+    timer("CheckInput", 20)
+}
