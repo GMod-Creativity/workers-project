@@ -1,0 +1,55 @@
+@name Worker Tests
+@outputs LMB RMB Use Selected Money Ready NoCreate I [E Board]:entity Holos:array
+if(first()){
+    Selected = 1
+    Money = 100000
+    Board = entity():isWeldedTo()
+    timer("a", 1000)
+    timer("b", 1)
+    timer("c", 100)
+    holoCreate(0, vec(0, 0, 0), vec(2, 2, 2))
+    holoModel(0, "cube")
+    holoAlpha(0, 200)
+}
+if(clk("c")){  
+    if(owner():aimEntity() == Board){   
+        GhostSnap = vec(round(owner():aimPos():x()/32) * 32, round(owner():aimPos():y()/32) * 32, Board:pos():z() + 17)
+        holoPos(0, GhostSnap)
+    }
+    else{
+        holoPos(0, vec(-10000, -10000, -10000))
+    }
+    timer("c", 100)
+}
+if(clk("a")){
+    Ready = 1
+}
+if(clk("b")){
+    LMB = owner():keyAttack1()
+    RMB = owner():keyAttack2()
+    Use = owner():keyUse()
+    if($RMB & RMB & Ready & owner():aimEntity() == Board){                 #if owner clicks
+        if(Selected == 1 & Money >= 100){   #if selected is box model and there is sufficient funds
+            NoCreate = 0
+            if(Holos:count() > 0){          #Loops through all holos and checks distances
+                for(D = 1, Holos:count()){
+                    if(owner():aimPos():distance(Holos[D, entity]:pos()) < 20){
+                        NoCreate = 1
+                        break
+                    }
+                }
+            }
+            if(!NoCreate){
+                I++                             #increment element
+                Money -= 100                    #take 100 away
+                Snap = vec(round(owner():aimPos():x()/32) * 32, round(owner():aimPos():y()/32) * 32, Board:pos():z() + 17)
+                holoCreate(I, Snap, vec(2, 2, 2))   #make a new holo
+                holoParent(I, Board)
+                holoModel(I, "cube")            #model is cube
+                E = holoEntity(I)               #stores the holo just made in E
+                Holos:pushEntity(E)             #pushes it onto Holos array
+            }
+        }
+    }
+    timer("b", 1)
+}

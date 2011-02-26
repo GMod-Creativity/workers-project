@@ -1,0 +1,50 @@
+@name Worker Tests
+@outputs LMB RMB Use Selected Money Ready NoCreate I E:entity Holos:array
+runOnTick(1)
+if(first()){
+    Selected = 1
+    Money = 500
+    timer("a", 1000)
+}
+if(clk("a")){
+    Ready = 1
+} 
+if(owner():keyAttack1()){
+    LMB = 1
+}
+else{
+    LMB = 0
+}
+if(owner():keyAttack2()){
+    RMB = 1
+}
+else{
+    RMB = 0
+}
+if(owner():keyUse()){
+    Use = 1
+}
+else{
+    Use = 0
+}
+if($LMB & LMB & Ready){                 #if owner clicks
+    if(Selected == 1 & Money >= 100){   #if selected is box model and there is sufficient funds
+        NoCreate = 0
+        if(Holos:count() > 0){          #Loops through all holos and checks distances
+            for(D = 1, Holos:count()){
+                if(owner():aimPos():distance(Holos[D, entity]:pos()) < 32){
+                    NoCreate = 1
+                    break
+                }
+            }
+        }
+        if(!NoCreate){
+            I++                             #increment element
+            Money -= 100                    #take 100 away
+            holoCreate(I, owner():aimPos() + vec(0, 0, 12), vec(2, 2, 2))   #make a new holo
+            holoModel(I, "cube")            #model is cube
+            E = holoEntity(I)               #stores the holo just made in E
+            Holos:pushEntity(E)             #pushes it onto Holos array
+        }
+    }
+}
