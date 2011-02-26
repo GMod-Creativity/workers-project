@@ -1,0 +1,14 @@
+Objects in-game
+	Units
+		Archers
+		Knights
+		Catapult
+
+	Buildings
+		Mill
+		Tower
+		Barracks
+
+	Misc
+		"Game board"
+		Display
