@@ -1,0 +1,80 @@
+@name Worker Tests
+@persist LMB RMB Use Board:entity Data:gtable Size:vector LastHolo
+
+#Snapping from Board is now fixed
+#You can freely move around the board and rotate it
+
+if(first() | dupefinished()) { timer("First", 1500) }
+elseif(clk("First"))
+{
+    Data = gTable("WorkerProjectInternal", 0)
+    
+    Board = entity():isWeldedTo()
+    Size = Board:boxSize()
+    timer("CheckInput", 20) #50 ops average
+    timer("GhostUpdate", 100)
+    
+    #64 because units will use the range 0-63
+    holoCreate(64, vec(0, 0, 0), vec(2, 2, 2), ang(), vec(255, 255, 255), "cube")
+    holoAlpha(64, 100)
+}
+elseif(clk("GhostUpdate"))
+{  
+    if(owner():aimEntity() == Board)
+    {
+        Local = toLocal(owner():aimPos(), ang(), Board:pos(), Board:angles()) / Size
+        #Local contains the 2D coordinates of the board ranging from (-1, -1) to (1, 1), whatever angle or position
+        #the board have (formula taken from graphics tablet code)
+        #Now let's say we want 8 * 8 (64) units :
+        Local = floor(Local * 8) + 0.5 #We add 0.5 to fit into the board (try removing it to see what I mean)
+        GhostSnap = Board:toWorld(((Local / 8) * Size):setZ(17))
+        holoPos(64, GhostSnap)
+        holoAng(64, Board:angles())
+    }
+    else
+    {
+        holoPos(64, vec(-10000, -10000, -10000))
+    }
+    timer("GhostUpdate", 100)
+}
+elseif(clk("CheckInput"))
+{
+    LMB = owner():keyAttack1()
+    RMB = owner():keyAttack2()
+    Use = owner():keyUse()
+    if($RMB & RMB & owner():aimEntity() == Board)
+    {
+        Local = toLocal(owner():aimPos(), ang(), Board:pos(), Board:angles()) / Size + 0.5
+        Local = floor(Local * 8)
+        Unit = Data["Unit_" + Local:x() + Local:y(), table]
+        ID = Local:x() * 8 + Local:y()
+        if(!Unit) #Create unit
+        {
+            Data["Build", vector] = vec(Data["EGPSelectedUnitID", number], Local:x(), Local:y())
+            Local = ((Local + 0.5) / 8 - 0.5) * Size
+            Snap = Board:toWorld(Local:setZ(17))
+            holoCreate(ID, Snap, vec(2, 2, 2), Board:angles(), vec(255, 255, 255), "cube")
+            holoParent(ID, Board)
+            LastHolo = ID
+        }
+        else
+        {
+            holoDelete(ID)
+            Data["Destroy", vector2] = vec2(Local:x(), Local:y())
+        }
+    }
+    timer("CheckInput", 20)
+}
+
+if(Data["CancelHolo", number])
+{
+    holoDelete(LastHolo)
+    Data["CancelHolo", number] = 0
+}
+elseif(Data["HoloPercent", vector])
+{
+    ID = Data["HoloPercent", vector]:y() * 8 + Data["HoloPercent", vector]:z()
+    holoScaleUnits(ID, vec(20, 20, 20 + Data["HoloPercent", vector]:x()))
+    holoPos(ID, holoEntity(ID):pos() + vec(0, 0, Data["HoloPercent", vector]:x()))
+    Data["HoloPercent", vector] = vec()
+}

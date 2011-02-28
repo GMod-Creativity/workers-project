@@ -1,0 +1,142 @@
+@name Worker Project Controller
+@persist Data:gtable [T Class ToBuild ToUpgrade]:table
+interval(500)
+
+#E2 controller by Mat000
+#For Worker Project
+#Works with Holo E2 and Display E2
+#Can Update/Build several objects at same time (not now tough)
+#Compute resources generation every 500 ms
+
+if(first())
+{
+    Data = gTable("WorkerProjectInternal", 0)
+    Data:clear(), Data["CoreAck", number] = 1
+
+# All of theses are temporary anyway
+    T = table(), T["Name", string] = "Nuclear Archers"  ## NUCLEAR ARCHERS  ## (UPGRADE LV 3)
+    T["Resources", array] = array("Money", 1500, "Ammo", 200)
+    T["IsUpgraded", number] = 1, T["NextUpgrade", table] = table(), Class[1, table] = T
+    T = table(), T["Name", string] = "Metal Archers"    ## METAL ARCHERS    ## (UPGRADE LV 2)
+    T["Resources", array] = array("Money", 750, "Ammo", 50)
+    T["IsUpgraded", number] = 1, T["NextUpgrade", table] = Class[1, table], Class[2, table] = T
+    T = table(), T["Name", string] = "Archers"          ## ARCHERS          ##
+    T["Resources", array] = array("Money", 250, "Ammo", 20)
+    T["NextUpgrade", table] = Class[2, table], Class[3, table] = T
+    
+    Data["Res_Money", number] = 7500
+    Data["Res_Ammo", number] = 500
+    
+    Data["EGPReset", number] = 1
+    
+    runOnTick(1)
+}
+elseif(Data["Build", vector]) #X : Build type, Y : Row, Z : Column
+{
+    Obj = Data["Obj_" + Data["Build", vector]:y() + Data["Build", vector]:z(), table]
+    if(!Obj)
+    {
+        Obj = table(), ID = clamp(Data["Build", vector]:x(), 1, Class:count()), OD = Class[ID, table]
+        Obj["Class", table] = OD #Link class reference
+        for(I = 1, OD["Resources", array]:count() / 2)
+        {
+            if(Data["Res_" + OD["Resources", array][I * 2 - 1, string], number] >= OD["Resources", array][I * 2, number]) { continue }
+            Break = 1, hint("You need more " + OD["Resources", array][I * 2 - 1, string] + " !", 5)
+        }
+        if(!Break & !OD["IsUpgraded", number])
+        {
+            for(I = 1, OD["Resources", array]:count() / 2)
+            {
+                Res = "Res_" + OD["Resources", array][I * 2 - 1, string]
+                Data[Res, number] = Data[Res, number] - OD["Resources", array][I * 2, number]
+                hint(-OD["Resources", array][I * 2, number] + " " + OD["Resources", array][I * 2 - 1, string], 5)
+            }
+            Obj["Pos", vector2] = vec2(Data["Build", vector]:y(), Data["Build", vector]:z())
+            Obj["Name", string] = OD["Name", string]
+            Obj["Level", number] = 1
+            Obj["UpgradeClass", table] = OD["NextUpgrade", table] ?: table()
+            Obj["CanUpgrade", number] = Obj["UpgradeClass", table]:count() ? 1 : 0
+            Obj["Building", number] = 1
+            Obj["TaskPercent", number] = 0
+            Data["Obj_" + Data["Build", vector]:y() + Data["Build", vector]:z(), table] = Obj
+            Data["SelectedUnit", table] = Obj
+            Data["ChangeTab", number] = 2
+            ToBuild[ToBuild:count() + 1, table] = Obj
+        }
+        else
+        {
+            Data["CancelHolo", vector2] = vec2(Data["Build", vector]:y(), Data["Build", vector]:z())
+        }
+    }
+    Data["Build", vector] = vec()
+}
+elseif(Data["UpgradeSelected", number]) #Query upgrade of current unit
+{
+    if(Data["SelectedUnit", table] & !Data["SelectedUnit", table]["Building", number] & !Data["SelectedUnit", table]["Upgrading", number])
+    {
+        Obj = Data["SelectedUnit", table], OD = Obj["UpgradeClass", table], Break = 0
+        if(Obj["CanUpgrade", number])
+        {
+            for(I = 1, OD["Resources", array]:count() / 2)
+            {
+                if(Data["Res_" + OD["Resources", array][I * 2 - 1, string], number] >= OD["Resources", array][I * 2, number]) { continue }
+                Break = 1, hint("You need more " + OD["Resources", array][I * 2 - 1, string] + " !", 5)
+            }
+            if(!Break)
+            {
+                for(I = 1, OD["Resources", array]:count() / 2)
+                {
+                    Res = "Res_" + OD["Resources", array][I * 2 - 1, string]
+                    Data[Res, number] = Data[Res, number] - OD["Resources", array][I * 2, number]
+                    hint(-OD["Resources", array][I * 2, number] + " " + OD["Resources", array][I * 2 - 1, string], 5)
+                }
+                Obj["Upgrading", number] = 1
+                Obj["TaskPercent", number] = 0
+                Data["UpdateEGP", number] = 1
+                ToUpgrade[ToUpgrade:count() + 1, table] = Obj
+                hint("Upgrading unit...", 5)
+            }
+        }
+        else { hint("Selected unit has reached maximum level !", 5) }
+    }
+    Data["UpgradeSelected", number] = 0
+}
+
+if(clk()) #Computations
+{
+    #foreach(K, Obj:table = ToBuild)
+    #{
+        Obj = ToBuild[1, table]
+        if(Obj)
+        {
+            Obj["TaskPercent", number] = clamp(Obj["TaskPercent", number] + randint(2, 6), 0, 100)
+            Data["HoloPercent", vector] = vec(Obj["TaskPercent", number], Obj["Pos", vector2]:x(), Obj["Pos", vector2]:y())
+            if(Data["SelectedUnit", table] == Obj & Data["EGPTab", number] == 2 & !Data["UpdateEGP", number]) { Data["UpdateEGP", number] = 2 }
+            if(Obj["TaskPercent", number] == 100)
+            {
+                Obj["Building", number] = 0
+                ToBuild:clear()
+            }
+        }
+    #}
+    #foreach(K, Obj:table = ToUpgrade)
+    #{
+        Obj = ToUpgrade[1, table]
+        if(Obj)
+        {
+            Obj["TaskPercent", number] = clamp(Obj["TaskPercent", number] + randint(2, 8), 0, 100)
+            Data["HoloPercent", vector] = vec(Obj["TaskPercent", number], Obj["Pos", vector2]:x(), Obj["Pos", vector2]:y())
+            if(Data["SelectedUnit", table] == Obj & Data["EGPTab", number] == 2 & !Data["UpdateEGP", number]) { Data["UpdateEGP", number] = 2 }
+            if(Obj["TaskPercent", number] == 100)
+            {
+                Obj["Upgrading", number] = 0
+                Obj["Class", table] = Obj["UpgradeClass", table], OD = Obj["Class", table]
+                Obj["Name", string] = OD["Name", string]
+                Obj["Level", number] = Obj["Level", number] + 1
+                Obj["UpgradeClass", table] = OD["NextUpgrade", table] ?: table()
+                Obj["CanUpgrade", number] = Obj["UpgradeClass", table]:count() ? 1 : 0
+                ToUpgrade:clear()
+            }
+        }
+    #}
+}

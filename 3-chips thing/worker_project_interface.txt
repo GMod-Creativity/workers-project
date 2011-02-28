@@ -1,0 +1,180 @@
+@name Worker Project Interface
+@inputs EGP:wirelink
+@persist Highlight [Triggers ID]:table KeyUse
+@persist Submenu:vector2 LastIndex T:string Data:gtable
+interval(20)
+
+#EGP Interface by Mat000
+#For Worker Project
+#Works with Controller E2
+
+if(first() | dupefinished() | Data["EGPReset", number]) { timer("First", 1500), Data["EGPReset", number] = 0 } #Make sure the controller E2 declares first the gtable
+elseif(clk("First"))
+{
+    Data = gTable("WorkerProjectInternal", 0)
+    ID = table()
+    Highlight = 2 #First element is highlighted by default
+    Data["EGPTab", number] = Highlight
+    Data["EGPSelectedUnitID", number] = 3
+    #This is the basic layout (code is kind of odd-compressed, it's to save some lines for the editor)
+    EGP:egpClear(), EGP:egpDrawTopLeft(1), EGP:egpBox(1, vec2(), vec2(512, 512)), EGP:egpColor(0, 255, 255, 255, 20), EGP:egpMaterial(0, "gui/gradient_down")
+    EGP:egpRoundedBox(2, vec2(10, 60), vec2(492, 442)), EGP:egpColor(2, 150, 150, 150, 255), EGP:egpMaterial(2, "gui/gradient_down")
+    EGP:egpRoundedBox(3, vec2(10, 60), vec2(492, 442)), EGP:egpColor(3, 255, 148, 84, 50), ID["MenuColor", number] = 3
+    EGP:egpText(4, "Worker", vec2(384, 436)), EGP:egpFont(4, "Coolvetica", 40), EGP:egpAlign(4, 1, 1), EGP:egpColor(4, 255, 128, 0, 255)
+    EGP:egpText(5, "Project", vec2(364, 466)), EGP:egpFont(5, "Coolvetica", 40), EGP:egpAlign(5, 1, 1), EGP:egpColor(5, 255, 128, 0, 255)
+    EGP:egpBox(6, vec2(425, 425), vec2(64, 64)), EGP:egpColor(6, Data["CoreAck", number] ? 150 : 255, !Data["CoreAck", number] ? 150 : 255, 150, 255)
+    EGP:egpMaterial(6, "gui/silkicons/group"), ID["Icon", number] = 6, Triggers["Icon", vector4] = vec4(445, 430, 505, 490)
+    Count = 3, H = 472 / Count, Y = 20
+    for(I = 0, Count - 1) #Menu buttons
+    {
+        D = 7 + I * 4, EGP:egpRoundedBox(D, vec2(Y, 10), vec2(H, 50)), EGP:egpColor(D, 200, 200, 200, 255), EGP:egpMaterial(D, "gui/gradient_up")
+        EGP:egpRoundedBox(D + 1, vec2(Y, 10), vec2(H, 50)), EGP:egpColor(D + 1, 64, 64, 64, 200)
+        EGP:egpBox(D + 2, vec2(Y + H - 37, 20), vec2(32, 32)), EGP:egpMaterial(D + 2, "null"), EGP:egpText(D + 3, "", vec2(Y + 10, 35))
+        EGP:egpAlign(D + 3, 0, 1), EGP:egpFont(D + 3, "Coolvetica", 26), EGP:egpColor(D + 3, 64, 64, 64, 255)
+        ID["Menu" + (I + 1), number] = D + 1, ID["Menu" + (I + 1) + "Icon", number] = D + 2, ID["Menu" + (I + 1) + "Text", number] = D + 3
+        Triggers["Menu" + (I + 1), vector4] = vec4(Y, 10, Y + H, 50), Y += H
+    }
+    LastIndex = D + 4, timer("ShowMainMenu", 10) #Don't forget that
+}
+elseif(Data["UpdateEGP", number] > 0) #Update submenu, 1 : erase & redraw, > 1 : redraw only
+{
+    if(Submenu & Data["UpdateEGP", number] == 1)
+    {
+        for(I = Submenu:x(), Submenu:y())
+        {
+            EGP:egpWedge(I, vec2(), vec2())
+        }
+    }
+    timer("ShowSubmenu" + Highlight, 10)
+    Data["EGPTab", number] = Highlight
+    Data["UpdateEGP", number] = 0
+}
+elseif(Data["ChangeTab", number] > 0)
+{
+    if(Submenu)
+    {
+        for(I = Submenu:x(), Submenu:y())
+        {
+            EGP:egpWedge(I, vec2(), vec2())
+        }
+    }
+    EGP:egpColor(ID["Menu" + Highlight, number], 64, 64, 64, 200)
+    Highlight = clamp(Data["ChangeTab", number], 1, 9)
+    Data["EGPTab", number] = Highlight
+    EGP:egpColor(ID["Menu" + Highlight, number], 64, 64, 96, 200)
+    timer("ShowSubmenu" + Highlight, 10)
+    Data["ChangeTab", number] = 0
+}
+elseif(clk("ShowMainMenu")) #Easy setup of menu
+{
+    EGP:egpColor(ID["Menu" + Highlight, number], 64, 64, 96, 200) #Highlight color
+    EGP:egpSetText(ID["Menu1Text", number], "Info"), EGP:egpMaterial(ID["Menu1Icon", number], "gui/info")
+    EGP:egpSetText(ID["Menu2Text", number], "Unit"), EGP:egpMaterial(ID["Menu2Icon", number], "gui/silkicons/magnifier")
+    EGP:egpSetText(ID["Menu3Text", number], "Build"), EGP:egpMaterial(ID["Menu3Icon", number], "gui/silkicons/wrench")
+    timer("ShowSubmenu" + Highlight, 10)
+}
+elseif(clk("ShowSubmenu1")) # ************************************ SUBMENU 1 ************************************ #
+{
+    LI = LastIndex
+    #TODO : show resources
+    Submenu = vec2(LastIndex, LI)
+}
+elseif(clk("ShowSubmenu2")) # ************************************ SUBMENU 2 ************************************ #
+{
+    LI = LastIndex
+    if(Data["SelectedUnit", table])
+    {
+        SelUnit = Data["SelectedUnit", table]
+        if(!SelUnit["Upgrading", number] & !SelUnit["Building", number])
+        {
+            #TODO : Show unit information
+            if(SelUnit["CanUpgrade", number])
+            {
+                UpClass = SelUnit["UpgradeClass", table], UpRes = UpClass["Resources", array]
+                EGP:egpText(LI,UpClass["Name", string], vec2(379, 135))
+                EGP:egpAlign(LI, 1, 1), EGP:egpFont(LI, "Coolvetica", 28), EGP:egpColor(LI, 64, 64, 64, 255), LI++
+                for(I = 1, UpRes:count() / 2)
+                {
+                    EGP:egpText(LI, UpRes[I * 2 - 1, string] + " : " + UpRes[I * 2, number], vec2(379, 135 + I * 35)), EGP:egpAlign(LI, 1, 1)
+                    EGP:egpFont(LI, "Coolvetica", 28), EGP:egpColor(LI, 64, 64, 64, 255), LI++
+                }
+            }
+            EGP:egpText(LI, SelUnit["Name", string], vec2(20, 90)), EGP:egpAlign(LI, 0, 1), EGP:egpFont(LI, "Coolvetica", 50)
+            EGP:egpColor(LI, 64, 64, 64, 255), LI++
+            EGP:egpText(LI, "Level " + SelUnit["Level", number], vec2(20, 130)), EGP:egpAlign(LI, 0, 1), EGP:egpFont(LI, "Coolvetica", 40)
+            EGP:egpColor(LI, 64, 64, 64, 255), LI++
+            EGP:egpRoundedBox(LI, vec2(300, 160 + I * 35), vec2(160, 40)), EGP:egpColor(LI, 0, 0, 200, 255), LI++
+            EGP:egpRoundedBox(LI, vec2(300, 160 + I * 35), vec2(160, 40)), EGP:egpColor(LI, 140, 140, 140, 255), EGP:egpMaterial(LI, "gui/gradient_down"), LI++
+            EGP:egpText(LI, SelUnit["CanUpgrade", number] ? "Upgrade !" : "No upgrade", vec2(380, 180 + I * 35))
+            EGP:egpColor(LI, 0, 0, 0, 255), EGP:egpFont(LI, "Coolvetica", 22), EGP:egpAlign(LI, 1, 1), LI++
+            Triggers["Sub2_Upgrade", vector4] = vec4(300, 160 + I * 35, 460, 200 + I * 35)
+            EGP:egpBox(LI, vec2(255, 120), vec2(3, 360)), EGP:egpColor(LI, 0, 0, 0, 255), LI++
+        }
+        elseif(SelUnit["Upgrading", number] | SelUnit["Building", number])
+        {
+            EGP:egpText(LI, (SelUnit["Upgrading", number] ? "Upgrading" : "Building") + "...", vec2(256, 236)), EGP:egpAlign(LI, 1, 1)
+            EGP:egpFont(LI, "Coolvetica", 60), EGP:egpColor(LI, 64, 64, 64, 255), LI++
+            EGP:egpText(LI, SelUnit["TaskPercent", number] + "%", vec2(256, 296)), EGP:egpAlign(LI, 1, 1)
+            EGP:egpFont(LI, "Coolvetica", 60), EGP:egpColor(LI, 64, 64, 64, 255), LI++
+        }
+    }
+    else
+    {
+        EGP:egpText(LI, "No unit selected", vec2(20, 90)), EGP:egpAlign(LI, 0, 1), EGP:egpFont(LI, "Coolvetica", 35)
+        EGP:egpColor(LI, 64, 64, 64, 255), LI++
+    }
+    
+    Submenu = vec2(LastIndex, LI)
+}
+elseif(clk("TriggerSubmenu2"))
+{
+    if(T == "Upgrade")
+    {
+        Data["UpgradeSelected", number] = 1
+    }
+}
+elseif(clk("ShowSubmenu3")) # ************************************ SUBMENU 3 ************************************ #
+{
+    LI = LastIndex
+    #TODO : show units to build
+    Submenu = vec2(LastIndex, LI)
+}
+
+# ******************************************************* INPUT HANDLING ******************************************************* #
+if(!KeyUse & owner():keyUse())
+{
+    T = "" #Trigger name
+    Vector = EGP:egpCursor(owner())
+    XG = Vector:x(), YG = Vector:y()
+    foreach(KeyString, Vec:vector4 = Triggers)
+    {
+        if(inrange(XG, Vec:x(), Vec:z()) & inrange(YG, Vec:y(), Vec:w()))
+        {
+            if(KeyString:left(3) == "Sub" & KeyString:sub(4, 4):toNumber() != Highlight) { continue }
+            T = KeyString, break #Break any useless computations
+        }
+    }
+    if(T:left(4) == "Menu" & !egpQueue()) #Update highlight color and submenu
+    {
+        EGP:egpColor(ID["Menu" + Highlight, number], 64, 64, 64, 200) #Revert back
+        Highlight = T:sub(5):toNumber()
+        Data["EGPTab", number] = Highlight
+        EGP:egpColor(ID["Menu" + Highlight, number], 64, 64, 96, 200)
+        timer("ShowSubmenu" + Highlight, 10) #Call "callback" corresponding to submenu
+        if(Submenu)
+        {
+            for(I = Submenu:x(), Submenu:y()) { EGP:egpWedge(I, vec2(), vec2()) }
+        }
+        Submenu = vec2()
+    }
+    elseif(T:left(3) == "Sub") #Call "callback" command for corresponding submenu
+    {
+        T = T:sub(6), timer("TriggerSubmenu" + Highlight, 10)
+    }
+    elseif(T == "Icon")
+    {
+        EGP:entity():soundPlay(1, 0, "garrysmod/content_downloaded.wav") #Just testing
+    }
+}
+
+KeyUse = owner():keyUse()
