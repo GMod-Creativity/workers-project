@@ -1,27 +1,46 @@
 @name Functions
-@outputs Func:string Stack:array I
+@outputs Func:string Stack:array I Return
 if(first()){
-    runOnTick(1)
-    I = 1000
+    I = 10000
     Stack[1, string] = "main"
     timer("funcs", 1)
 }
-if(Stack[Stack:count(), string] == "main"){
-    Temp = Stack:count()
-    I -= 2
-    if(I <= 0){
-        if(Temp == Stack:count()){
-            Stack:popString()
+if(clk("funcs") & Stack:count() > 0){
+    while(perf()){
+        if(Stack[Stack:count(), string] == "main"){
+            Temp = Stack:count()
+            if(!Return){
+                if(I <= 0){
+                    if(Temp == Stack:count()){
+                        Stack:popString()
+                    }
+                }
+                else{
+                    Stack:pushString("func")
+                    if(Return){
+                        Return--
+                    }
+                }
+            }
+            if(Return){
+                I++
+                if(Return){
+                    Return--
+                }
+            }
+        }
+        elseif(Stack[Stack:count(), string] == "func"){
+            Temp = Stack:count()
+            if(Temp == Stack:count()){
+                I -= 2
+                Stack:popString()
+                Return++
+            }
+        }
+        else{
+            Stack = array()
+            break
         }
     }
-    else{
-        Stack:pushString("func")
-    }
-}
-elseif(Stack[Stack:count(), string] == "func"){
-    Temp = Stack:count()
-    I += 1.9
-    if(Temp == Stack:count()){
-        Stack:popString()
-    }
+    timer("funcs", 1)
 }
