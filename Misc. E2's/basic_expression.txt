@@ -1,0 +1,62 @@
+This allows expressions to have variables, numbers, parentheses, addition, subtraction, multiplication and division (with the mathematical priorities).
+
+EBNF-like Grammar :
+-------------------------------------------------------------------------------
+expression = ["+"|"-"] term {("+"|"-") term} .
+
+term = factor {("*"|"/") factor) .
+
+factor =
+	ident
+	| number
+	| "(" expression ")" .
+-------------------------------------------------------------------------------
+
+Parse Tree for :
+
+-2 * (8 + Count) / 5 * (0.5 + 0.5);
+
+-------------------------------------------------------------------------------
+expression
+	number<-2> (Depth 1, Leaf 1)
+	times<*>
+		(lparen) (Depth 2, Leaf 1)
+			number<8> (Depth 3, Leaf 1)
+			plus<+>
+			ident<Count>
+		(rparen)
+		slash</>
+		number<5>
+		times<*>
+		(lparen)
+			number<0.5> (Depth 3, Leaf 2)
+			plus<+>
+			number<0.5>
+		(rparen)
+	plus<+>
+	ident<Test>
+semicolon
+-------------------------------------------------------------------------------
+
+ASM Code for Parse Tree (have to be generated from the deepest depth to the root of the tree)
+
+// depth3_leaf1
+mov #Depth3_1, 9
+add #Depth3_1, #Count
+// depth3_leaf2
+mov #Depth3_2, 0.5
+add #Depth3_2, 0.5
+
+// depth2_leaf1
+mov Depth2_1, #Depth3_1
+div #Depth2_1, 5
+mul #Depth2_1, #Depth3_2
+
+// depth1_leaf1
+mov #Depth1_1, -2
+mul #Depth1_1, #Depth2_1
+add #Depth1_1, #Test
+
+
+
+Final result = Depth1_1
