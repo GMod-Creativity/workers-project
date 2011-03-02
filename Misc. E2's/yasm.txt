@@ -1,26 +1,23 @@
-@name yASM
+@name CPU
 @outputs [CodeString TempString]:string [CodeArray Errors]:array I1
 @outputs Op P1 P2 Done C [Mem Labels]:array E Output:string Ticks
-@outputs Comp:vector2 S Strings:array
+@outputs Comp:vector2 S [Strings Stack]:array
 if(first()){    #Preprocessing
     E = 1
     I1 = 1
     C = 1
     S = 1
-    CodeString = "  000100010048;
-                    001600010000;
-                    001700010065;
-                    00170001006C;
-                    00170001006C;
-                    00170001006F;
-                    001700010020;
-                    001700010057;
-                    00170001006F;
-                    001700010072;
-                    00170001006C;
-                    001700010064;
-                    001700010021;
-                    00180001;"
+    CodeString = "  0005:
+                    00190006;
+                    000100010001;
+                    0020;
+                    0006:
+                    00190007;
+                    00010001000A;
+                    0020;
+                    0007:
+                    000100010064;
+                    0020;"
     CodeString = CodeString:replace("\n", "")
     CodeString = CodeString:replace(" ", "")
     for(I = 0, CodeString:length()){
@@ -190,6 +187,24 @@ if(clk("a") & !Done){   #Opcodes
                 Output += toChar(Mem[I, number])
                 I++
             }
+        }
+        elseif(Op == 0x19){
+            Stack:pushNumber(C)   
+            I = 0
+            while(Labels[I, vector2]:y() != P1){
+                I++
+                if(I > Labels:count()){
+                    Errors[E, number] = 3
+                    E++
+                    Done = 1
+                    break
+                }
+            }
+            C = Labels[I, vector2]:x()
+        }
+        elseif(Op == 0x20){
+            C = Stack[Stack:count(), number]
+            Stack:popNumber()
         }
         C++
     }
