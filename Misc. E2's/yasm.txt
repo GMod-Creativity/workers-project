@@ -1,23 +1,21 @@
 @name CPU
+@inputs Port1 Port2 Port3 Port4 Port5 Port6 Port7 Port8
+@outputs Port1 Port2 Port3 Port4 Port5 Port6 Port7 Port8
 @outputs [CodeString TempString]:string [CodeArray Errors]:array I1
 @outputs Op P1 P2 Done C [Mem Labels]:array E Output:string Ticks
-@outputs Comp:vector2 S [Strings Stack]:array
+@outputs Comp:vector2 S [Strings Stack PStack]:array
 if(first()){    #Preprocessing
     E = 1
     I1 = 1
     C = 1
     S = 1
-    CodeString = "  0005:
-                    00190006;
-                    000100010001;
+    CodeString = "  0001:
+                    001F00FF;
+                    001F3D33;
                     0020;
-                    0006:
-                    00190007;
-                    00010001000A;
-                    0020;
-                    0007:
-                    000100010064;
-                    0020;"
+                    00210001;
+                    001E0001;
+                    "
     CodeString = CodeString:replace("\n", "")
     CodeString = CodeString:replace(" ", "")
     for(I = 0, CodeString:length()){
@@ -202,9 +200,30 @@ if(clk("a") & !Done){   #Opcodes
             }
             C = Labels[I, vector2]:x()
         }
-        elseif(Op == 0x20){
+        elseif(Op == 0x1A){
             C = Stack[Stack:count(), number]
             Stack:popNumber()
+        }
+        elseif(Op == 0x1B){
+            Mem[P1, number] = ioGetInputNumber("Port" + P2)
+        }
+        elseif(Op == 0x1C){
+            ioSetOutput("Port" + P1, Mem[P2, number])
+        }
+        elseif(Op == 0x1D){
+            ioSetOutput("Port" + P1, P2)
+        }
+        elseif(Op == 0x1E){
+            PStack:pushNumber(Mem[P1, number])
+        }
+        elseif(Op == 0x1F){
+            PStack:pushNumber(P1)
+        }
+        elseif(Op == 0x20){
+            PStack:popNumber()
+        }
+        elseif(Op == 0x21){
+            Mem[P1, number] = PStack:popNumber()
         }
         C++
     }
