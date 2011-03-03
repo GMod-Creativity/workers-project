@@ -1,11 +1,9 @@
 @name Functions
-@persist [Stack Local]:table [Func Call]:string Return State
-@outputs I
+@outputs [Stack Local Call Return]:table F:string State I
 
 if(first())
 {
-    I = 10000
-    Call = "main"
+    Call = table("main", 10000)
     runOnTick(1)
 }
 
@@ -13,42 +11,53 @@ if(tickClk())
 {
     while(perf())
     {
-        if(Func == "main") #Each function have it's own table independant from other calls, called Local
+        if(F == "main")
         {
-            if(I > 0)
+            if(State == 0)
             {
-                I += 1
-                Call = "func"
+                Local["Time", number] = curtime() #We can have custom variables
+                Local["Value", number] = Local["Args", table][1, number]
             }
-            else
+            
+            Call = table("DecrementVariable", Local["Value", number], 2)
+            if(State % 2 == 1) #We store new result
             {
-                #Do nothing, just loop the main function
+                Local["Value", number] = Local["Return", table][1, number]
             }
+            
+            #if(Local["Value", number] <= 0)
+            #{
+                #Local["Time", number] = curtime() - Local["Time", number]
+                #print("Execution time : " + Local["Time", number])
+                #runOnTick(0), break
+            #}
+            I = Local["Value", number]
         }
-        elseif(Func == "func")
+        elseif(F == "DecrementVariable") #Basically it's NewValue = DecrementVariable(Value, Count)
         {
-            I -= 2
-            Return = 1
+            Return = table(Local["Args", table][1, number] - Local["Args", table][2, number])
         }
         
-        if(Call) #Then create new context for the new function to be called
+        if(Call:count())
         {
             Context = table()
-            Context["_name", string] = Call
-            Context["_state", number] = 0
-            State = 0
+            Context["_name", string] = Call[1, string]
+            Context["Args", table] = Call:clone()
+            Context["Args", table]:removeString(1)
+            Context["_state", number] = 0, State = 0
             Local = Context
             Stack:pushTable(Context)
-            Func = Call, Call = ""
+            F = Call[1, string], Call = table()
         }
-        elseif(Return)
+        elseif(Return:count())
         {
-            Stack:popTable() #Destroy the context when returning
-            Context = Stack[Stack:count(), table] #Restore previous context
-            Func = Context["_name", string]
+            Stack:popTable()
+            Context = Stack[Stack:count(), table]
+            F = Context["_name", string]
             Context["_state", number] = Context["_state", number] + 1
+            Context["Return", table] = Return:clone()
             State = Context["_state", number]
-            Return = 0
+            Return = table()
         }
     }
 }
