@@ -1,0 +1,54 @@
+@name Functions
+@persist [Stack Local]:table [Func Call]:string Return State
+@outputs I
+
+if(first())
+{
+    I = 10000
+    Call = "main"
+    runOnTick(1)
+}
+
+if(tickClk())
+{
+    while(perf())
+    {
+        if(Func == "main") #Each function have it's own table independant from other calls, called Local
+        {
+            if(I > 0)
+            {
+                I += 1
+                Call = "func"
+            }
+            else
+            {
+                #Do nothing, just loop the main function
+            }
+        }
+        elseif(Func == "func")
+        {
+            I -= 2
+            Return = 1
+        }
+        
+        if(Call) #Then create new context for the new function to be called
+        {
+            Context = table()
+            Context["_name", string] = Call
+            Context["_state", number] = 0
+            State = 0
+            Local = Context
+            Stack:pushTable(Context)
+            Func = Call, Call = ""
+        }
+        elseif(Return)
+        {
+            Stack:popTable() #Destroy the context when returning
+            Context = Stack[Stack:count(), table] #Restore previous context
+            Func = Context["_name", string]
+            Context["_state", number] = Context["_state", number] + 1
+            State = Context["_state", number]
+            Return = 0
+        }
+    }
+}
