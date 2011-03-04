@@ -1,46 +1,71 @@
 @name Functions
-@outputs Func:string Stack:array I Return
-if(first()){
-    I = 10000
-    Stack[1, string] = "main"
-    timer("funcs", 1)
+@persist [Stack Local Call Return]:table F:string State
+
+if(first())
+{
+    Call = table("main")
+    runOnTick(1)
 }
-if(clk("funcs") & Stack:count() > 0){
-    while(perf()){
-        if(Stack[Stack:count(), string] == "main"){
-            Temp = Stack:count()
-            if(!Return){
-                if(I <= 0){
-                    if(Temp == Stack:count()){
-                        Stack:popString()
-                    }
-                }
-                else{
-                    Stack:pushString("func")
-                    if(Return){
-                        Return--
-                    }
-                }
+
+if(tickClk())
+{
+    while(perf())
+    {
+        if(F == "main")
+        {
+            if(State == 0)
+            {
+                Local["Time", number] = curtime()
+                Call = table("factorial", 15) #Get the factorial of 15, "15!"
             }
-            if(Return){
-                I++
-                if(Return){
-                    Return--
+            elseif(State == 1)
+            {
+                Local["Time", number] = curtime() - Local["Time", number]
+                print("Execution time : " + Local["Time", number])
+                print("Result : " + Local["Ret", table][1, number])
+                runOnTick(0), break
+            }
+        }
+        elseif(F == "factorial") #Returns the factorial of Arg1
+        {
+            K = Local["Arg", table][1, number]
+            if(K <= 1)
+            {
+                Return = table(1)
+            }
+            else
+            {
+                if(State == 0)
+                {
+                    Call = table("factorial", K - 1)
+                }
+                elseif(State == 1)
+                {
+                    Return = table(K * Local["Ret", table][1, number])
                 }
             }
         }
-        elseif(Stack[Stack:count(), string] == "func"){
-            Temp = Stack:count()
-            if(Temp == Stack:count()){
-                I -= 2
-                Stack:popString()
-                Return++
-            }
+        
+        if(Call:count())
+        {
+            Context = table()
+            Context["_name", string] = Call[1, string]
+            Context["Arg", table] = Call:clone()
+            Context["Arg", table]:removeString(1)
+            Context["_state", number] = 0, State = 0
+            Local = Context
+            Stack:pushTable(Context)
+            F = Call[1, string], Call = table()
         }
-        else{
-            Stack = array()
-            break
+        elseif(Return:count())
+        {
+            Stack:popTable()
+            Context = Stack[Stack:count(), table]
+            F = Context["_name", string]
+            Context["_state", number] = Context["_state", number] + 1
+            Context["Ret", table] = Return:clone()
+            State = Context["_state", number]
+            Local = Context, Return = table()
         }
     }
-    timer("funcs", 1)
 }
