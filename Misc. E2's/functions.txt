@@ -9,7 +9,7 @@ if(first())
 
 if(tickClk())
 {
-    while(perf())
+    while(maxquota() > 1000)
     {
         if(F == "main")
         {
@@ -20,9 +20,14 @@ if(tickClk())
             }
             elseif(State == 1)
             {
+                print("Result of factorial : " + Local["Ret", table][1, number])
+                Call = table("fibonacci", 16) #Get the fibonacci number of 16
+            }
+            elseif(State == 2)
+            {
                 Local["Time", number] = curtime() - Local["Time", number]
-                print("Execution time : " + Local["Time", number])
-                print("Result : " + Local["Ret", table][1, number])
+                print("Result of fibonacci : " + Local["Ret", table][1, number])
+                print("Total execution time : " + round(Local["Time", number], 2) + " seconds")
                 runOnTick(0), break
             }
         }
@@ -45,7 +50,32 @@ if(tickClk())
                 }
             }
         }
+        elseif(F == "fibonacci") #Returns the fibonacci's sequence number
+        {
+            K = Local["Arg", table][1, number]
+            if(K < 2)
+            {
+                Return = table(K)
+            }
+            else
+            {
+                if(State == 0)
+                {
+                    Call = table("fibonacci", K - 1)
+                }
+                elseif(State == 1)
+                {
+                    Local["K1", number] = Local["Ret", table][1, number]
+                    Call = table("fibonacci", K - 2)
+                }
+                elseif(State == 2)
+                {
+                    Return = table(Local["K1", number] + Local["Ret", table][1, number])
+                }
+            }
+        }
         
+        # Function processing #
         if(Call:count())
         {
             Context = table()
