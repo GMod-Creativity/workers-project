@@ -1,0 +1,41 @@
+0000	|	Ends the program.
+0001	|	Stores P2 in [P1]
+0002	|	Stores [P2] in [P1]
+0003	|	Adds [P1] and [P2] and stores the result in [P1]
+0004	|	Subtracts [P2] from [P1] and stores the result in [P1]
+0005	|	Multiplies [P1] by [P2] and stores the result in [P1]
+0006	|	Divides [P1] by [P2] and stores the result in [P1]
+0007	|	Adds [P1] and P2 and stores the result in [P1]
+0008	|	Subtracts P2 from [P1] and stores the result in [P1]
+0009	|	Multiplies [P1] by P2 and stores the result in [P1]
+000A	|	Divides [P1] by P2 and stores the result in [P1]
+000B	|	Increments [P1]
+000C	|	Decrements [P1]
+000D	|	Starts at [P1] and goes through memory until P2 is found and stores the string in Output Note: This does not actually create a string varibale.
+000E	|	Adds the character corresponding to P2 to output.
+000F	|	Does nothing :P
+0010	|	Does an unconditional jump to the label specified by P1.
+0011	|	Compares P1 with P2.
+0012	|	Jumps to label specified by P1 if the last compare was equal.
+0013	|	Jumps to label specified by P1 if the last compare was inequal.
+0014	|	Stores P2 in [[P1]] Note: Notice the double brackets, that's because P2 is stored in the memory cell specified [P1]
+0015	|	Stores [P2] in [[P1]]
+0016	|	Makes a string variable that starts at [P1] and ends at the first occurence of P2 when going through memory.
+0017	|	Adds a character specified by P2 to the string that starts at P1
+0018	|	Puts the string specified by P1 in Output
+0019	|	Makes a call to the lable specified by P1
+001A	|	Returns from a call
+001B	|	Stores the port specified by P2 in [P1]
+001C	|	Stores [P2] in port specified by P1
+001D	|	Stores P2 in port specified by P1
+001E	|	Pushes [P1] onto the stack
+001F	|	Pushes P1 onto the stack
+0020	|	Pops off the stack
+0021	|	Pops off the stack and stores the number popped off the stack in [P1]
+0022	|	Slows program down to executing instructions once per game tick (Is on if P1 > 0 and off if P1 is 0)
+0023	|	Stores the sine of [P2] in [P1]
+0024	|	Stores the sine of P2 in [P1]
+0025	|	Stores the cosine of [P2] in [P1]
+0026	|	Stores the cosine of P2 in [P1]
+0027	|	Stores the absolute value of [P2] in [P1]
+0028	|	Pauses the program for one tick
