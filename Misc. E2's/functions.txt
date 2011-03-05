@@ -1,14 +1,54 @@
 @name Functions
-@persist [Stack Local Call Return]:table F:string State
+@persist [Tk Vtk Expr]:array TI Comp:array StrI Tabs
+#UDF Variables
+@persist [Stack Local Call Return Arg Retd]:table F:string State
 
 if(first())
 {
+    Str = "(2 + 3) * 5 + 5 - 35 + (100 / 10)" #Gives 5 as final number
+    I = 1
+    while(Str[I] != "")
+    {
+        C = Str[I], I++
+        if(C == "(") { Tk:pushString("lpr") }
+        elseif(C == ")") { Tk:pushString("rpr") }
+        elseif(C == "+") { Tk:pushString("add") }
+        elseif(C == "-") { Tk:pushString("sub") }
+        elseif(C == "*") { Tk:pushString("mul") }
+        elseif(C == "/") { Tk:pushString("div") }
+        elseif(C == " " | C == "\t" | C == "\n") { continue }
+        elseif(inrange(toByte(C), 65, 90) | inrange(toByte(C), 97, 122))
+        {
+            TempStr = C
+            C = Str[I], I++
+            while(inrange(toByte(C), 65, 90) | inrange(toByte(C), 97, 122) | inrange(toByte(C), 48, 57) | C == "_")
+            {
+                TempStr += C
+                C = Str[I], I++
+            }, I--
+            Tk:pushString("var")
+            Vtk[Tk:count(), string] = TempStr
+        }
+        elseif(inrange(toByte(C), 48, 57))
+        {
+            TempStr = C
+            C = Str[I], I++
+            while(inrange(toByte(C), 48, 57) | C == ".")
+            {
+                TempStr += C
+                C = Str[I], I++
+            }, I--
+            Tk:pushString("val")
+            Vtk[Tk:count(), number] = TempStr:toNumber()
+        }
+    }
     Call = table("main")
     runOnTick(1)
 }
 
 if(tickClk())
 {
+    Stop = 0
     while(maxquota() > 1000)
     {
         if(F == "main")
@@ -16,63 +56,146 @@ if(tickClk())
             if(State == 0)
             {
                 Local["Time", number] = curtime()
-                Call = table("factorial", 15) #Get the factorial of 15, "15!"
+                TI = 1, Call = table("parse_expr")
+            }
+            elseif(State == 3)
+            {
+                TI = 1
+                #Call = table("beg_expr")
             }
             elseif(State == 1)
             {
-                print("Result of factorial : " + Local["Ret", table][1, number])
-                Call = table("fibonacci", 16) #Get the fibonacci number of 16
-            }
-            elseif(State == 2)
-            {
                 Local["Time", number] = curtime() - Local["Time", number]
-                print("Result of fibonacci : " + Local["Ret", table][1, number])
-                print("Total execution time : " + round(Local["Time", number], 2) + " seconds")
-                runOnTick(0), break
+                print("Execution time : " + round(Local["Time", number], 2) + " seconds")
+                printTable(Comp)
+                StrI = 0, Tabs = 0
+                Stop = 1
             }
         }
-        elseif(F == "factorial") #Returns the factorial of Arg1
+        elseif(F == "parse_expr")
         {
-            K = Local["Arg", table][1, number]
-            if(K <= 1)
+            if(State == 0)
             {
-                Return = table(1)
+                Expr:pushString("beg_expr")
+                Call = table("parse_term")
             }
             else
             {
-                if(State == 0)
+                if(Tk[TI, string] == "add" | Tk[TI, string] == "sub")
                 {
-                    Call = table("factorial", K - 1)
+                    Expr:pushString(Tk[TI, string]), TI++
+                    Call = table("parse_term")
                 }
-                elseif(State == 1)
+                else
                 {
-                    Return = table(K * Local["Ret", table][1, number])
+                    Expr:pushString("end_expr")
+                    Return = table(1)
                 }
             }
+            
         }
-        elseif(F == "fibonacci") #Returns the fibonacci's sequence number
+        elseif(F == "parse_term")
         {
-            K = Local["Arg", table][1, number]
-            if(K < 2)
+            if(State == 0)
             {
-                Return = table(K)
+                Expr:pushString("beg_term")
+                Call = table("parse_factor")
             }
             else
             {
+                if(Tk[TI, string] == "mul" | Tk[TI, string] == "div")
+                {
+                    Expr:pushString(Tk[TI, string]), TI++
+                    Call = table("parse_factor")
+                }
+                else
+                {
+                    Expr:pushString("end_term")
+                    Return = table(1)
+                }
+            }
+        }
+        elseif(F == "parse_factor")
+        {
+            if(State == 0)
+            {
+                Expr:pushString("beg_factor")
+                Local["Token", string] = Tk[TI, string]
+            }
+            if(Local["Token", string] == "val")
+            {
+                Expr:pushString(Tk[TI, string] + "_" + Vtk[TI, number])
+                TI++, Return = table(1)
+            }
+            elseif(Local["Token", string] == "var")
+            {
+                Expr:pushString(Tk[TI, string] + "_" + Vtk[TI, string])
+                TI++, Return = table(1)
+            }
+            elseif(Local["Token", string] == "lpr")
+            {
                 if(State == 0)
                 {
-                    Call = table("fibonacci", K - 1)
+                    Call = table("parse_expr"), TI++
                 }
                 elseif(State == 1)
                 {
-                    Local["K1", number] = Local["Ret", table][1, number]
-                    Call = table("fibonacci", K - 2)
-                }
-                elseif(State == 2)
-                {
-                    Return = table(Local["K1", number] + Local["Ret", table][1, number])
+                    if(Tk[TI, string] == "rpr")
+                    {
+                        TI++, Return = table(1)
+                    }
+                    else
+                    {
+                        hint("Expected ')' after expression", 5), Stop = 1
+                    }
                 }
             }
+            else
+            {
+                hint("Expected value, variable or expression", 5), Stop = 1
+            }
+            if(Return:count()) { Expr:pushString("end_factor") }
+        }
+        elseif(F == "beg_expr") #Don't care about "beg_x" functions they don't work for now
+        {
+            #Pseudo code :
+            #State == 0 -> eax = first term
+            #State  > 0 -> eax = eax (+|-) next term
+            if(State == 0)
+            {
+                TI++, Call = table("beg_term")
+            }
+            else
+            {
+                if(State == 1)
+                {
+                    Comp:pushString("mov eax, first term"), TI++
+                    #Call = table("beg_term")
+                }
+                elseif(State > 1)
+                {
+                    Comp:pushString(Tk[TI, string] + " eax, next term"), TI++
+                    #Call = table("beg_term")
+                }
+                if(Expr[TI, string] == "end_expr")
+                {
+                    Return = table(1)
+                }
+            }
+        }
+        elseif(F == "beg_term")
+        {
+            #Pseudo code :
+            #State == 0 -> eax = first factor
+            #State  > 0 -> eax = eax (*|/) next factor
+            TI++
+            while(Expr[TI, string] != "end_term") { TI++ }, TI++
+            Return = table(1)
+        }
+        elseif(F == "beg_factor")
+        {
+            #Pseudo code :
+            #eax = next (variable | number | expression)
         }
         
         # Function processing #
@@ -82,9 +205,9 @@ if(tickClk())
             Context["_name", string] = Call[1, string]
             Context["Arg", table] = Call:clone()
             Context["Arg", table]:removeString(1)
+            Arg = Context["Arg", table]
             Context["_state", number] = 0, State = 0
-            Local = Context
-            Stack:pushTable(Context)
+            Local = Context, Stack:pushTable(Context)
             F = Call[1, string], Call = table()
         }
         elseif(Return:count())
@@ -94,8 +217,38 @@ if(tickClk())
             F = Context["_name", string]
             Context["_state", number] = Context["_state", number] + 1
             Context["Ret", table] = Return:clone()
+            Arg = Context["Arg", table]
+            Retd = Context["Ret", table]
             State = Context["_state", number]
             Local = Context, Return = table()
         }
+        elseif(Stop)
+        {
+            Stack:clear()
+            runOnTick(0), break
+        }
+    }
+}
+
+if(Stop == 1 | clk("PrintTree"))
+{
+    if(StrI == 0) { print("------------------------ TREE ------------------------"), StrI++ }
+    while(perf())
+    {
+        V = Expr[StrI, string]
+        Str = ""
+        if(V:left(4) == "end_") { Tabs-- }
+        for(I = 1, Tabs) { Str += "\t" }
+        if(V:left(4) == "beg_") { Tabs++ }
+        print(Str + V), StrI++
+        if(StrI > Expr:count())
+        {
+            print("------------------------------------------------------")
+            break
+        }
+    }
+    if(StrI < Expr:count())
+    {
+        timer("PrintTree", 10)
     }
 }
