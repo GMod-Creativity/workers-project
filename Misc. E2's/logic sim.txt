@@ -1,12 +1,11 @@
 @name Wiremod
 @inputs EGP:wirelink
-@outputs [Gates Selected Colors Ports]:table [Pos Size]:vector2 Type
+@outputs [Gates Selected Colors Ports Inputs Outputs]:table [Pos NoSnap Size]:vector2 Type
 @outputs LMB RMB Use LOL LOLOL I1
 if(first()){
     runOnTick(1)
     EGP:egpClear()
     Size = vec2(32, 32)
-    Wires = table()
     Type = 1
     Colors[1, vector] = vec(0, 255, 0)
     Colors[2, vector] = vec(255, 0, 0)
@@ -21,7 +20,8 @@ if(first()){
 LMB = owner():keyAttack1()
 RMB = owner():keyAttack2()
 Use = owner():keyUse()
-Pos = round(EGP:egpCursor(owner()) / 64) * 64
+NoSnap = EGP:egpCursor(owner())
+Pos = round(NoSnap / 64) * 64
 if($LMB & LMB & inrange(Pos, vec2(64, 64), vec2(484, 484))){
     NoCreate = 0
     for(I = 0, Gates:count()){
@@ -32,7 +32,7 @@ if($LMB & LMB & inrange(Pos, vec2(64, 64), vec2(484, 484))){
     }
     if(!NoCreate){
         I1++
-        Gates:pushTable(table(Pos, Size, Type, Ports))
+        Gates:pushTable(table(Pos, Size, Type, Inputs, Outputs))
         EGP:egpBox(I1 + 16, Gates[I1, table][1, vector2], Gates[I1, table][2, vector2])
         EGP:egpColor(I1 + 16, Colors[Gates[I1, table][3, number], vector])
     }
@@ -47,9 +47,18 @@ if($RMB & RMB){
 }
 if($Use & Use){
     for(I = 0, Gates:count()){
-        if(Gates[I, table][1, vector2]:distance(Pos) < 32){
-            Selected = Gates[I, table]
+        if(Gates[I, table][1, vector2]:distance(NoSnap) < 16){
+            Temp = Gates[I, table]:clone()
+            if(Selected:count() == 0){
+                Selected = Gates[I, table]
+            }
+            elseif(Temp:count() > 0){
+                Selected = Gates[I, table]
+            }
             break
+        }
+        else{
+            Selected = table():clone()
         }
     }
 }
