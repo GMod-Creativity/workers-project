@@ -1,0 +1,170 @@
+@name yCPU
+@inputs RAM:wirelink Mem:wirelink Reset Port1 Port2 Port3 Port4 Port5 Port6 Port7 Port8
+@outputs Output:string Port1 Port2 Port3 Port4 Port5 Port6 Port7 Port8
+@persist IP Stack OncePerTick Stop Ticks Comp
+@trigger Reset
+###################################################
+#   __     __   _______    _______    __    __    #
+#   \ \   / /  |   ____|  |   _   |  |  |  |  |   #
+#    \ \_/ /   |  |       |  |_|  |  |  |  |  |   #
+#     \   /    |  |       |   ____|  |  |  |  |   #
+#      \ /     |  |       |  |       |  |  |  |   #
+#      | |     |  |____   |  |       |  |__|  |   #
+#      |_|     |_______|  |__|       |________|   #
+#                                                 #
+###################################################
+
+if(first()){
+    runOnTick(1)
+}
+elseif(~Reset & Reset){
+    Halt = 0, IP = 0, Ticks = 0, Comp = 0, OncePerTick = 0
+    Stack = 1048575 #Stack starts at the end of memory
+}
+elseif(tickClk()){
+    while(perf()){
+        
+        Op = RAM[IP]
+        P1 = RAM[IP + 1]
+        P2 = RAM[IP + 2]
+        
+        if(Op == 0x00){
+            Stop = 1
+            break
+        }
+        elseif(Op == 0x01){
+            Mem[P1] = P2
+        }
+        elseif(Op == 0x02){
+            Mem[P1] = Mem[P2]
+        }
+        elseif(Op == 0x03){
+            Mem[P1] = Mem[P1] + Mem[P2]
+        }
+        elseif(Op == 0x04){
+            Mem[P1] = Mem[P1] - Mem[P2]
+        }
+        elseif(Op == 0x05){
+            Mem[P1] = Mem[P1] * Mem[P2]
+        }
+        elseif(Op == 0x06){
+            if(Mem[P2] != 0){
+                Mem[P1] = Mem[P1] / Mem[P2]
+            }
+            else{
+                Error = 1, Stop = 1
+            }
+        }
+        elseif(Op == 0x07){
+            Mem[P1] = Mem[P1] + P2
+        }
+        elseif(Op == 0x08){
+            Mem[P1] = Mem[P1] - P2
+        }
+        elseif(Op == 0x09){
+            Mem[P1] = Mem[P1] * P2
+        }
+        elseif(Op == 0x0A){
+            if(P2 != 0){
+                Mem[P1] = Mem[P1] / P2
+            }
+            else{
+                Error = 1, Stop = 1
+            }
+        }
+        elseif(Op == 0x0B){
+            Mem[P1] = Mem[P1] + 1
+        }
+        elseif(Op == 0x0C){
+            Mem[P1] = Mem[P1] - 1
+        }
+        elseif(Op == 0x0D){
+            Output = Mem:readString(P1)
+        }
+        elseif(Op == 0x0E){
+            Output += toChar(P2)
+        }
+        elseif(Op == 0x10){
+            IP = P1 - 3
+        }
+        elseif(Op == 0x11){
+            Comp = P1 - P2
+        }
+        elseif(Op == 0x12 & Comp == 0){
+            IP = P1 - 3
+        }
+        elseif(Op == 0x13 & Comp != 0){
+            IP = P1 + 3
+        }
+        elseif(Op == 0x14){
+            Mem[Mem[P1]] = P2
+        }
+        elseif(Op == 0x15){
+            Mem[Mem[P1]] = Mem[P2]
+        }
+        elseif(Op == 0x16){
+            #Obsolete
+        }
+        elseif(Op == 0x17){
+            #Obsolete
+        }
+        elseif(Op == 0x18){
+            Output = Mem:readString(P1) #It's the same as opcode 0x0D actually
+        }
+        elseif(Op == 0x19){
+            Mem[Stack] = IP, Stack--
+            IP = P1 - 3
+        }
+        elseif(Op == 0x1A){
+            Stack++, IP = Mem[Stack]
+        }
+        elseif(Op == 0x1B){
+            Mem[P1] = ioGetInputNumber("Port" + P2)
+        }
+        elseif(Op == 0x1C){
+            ioSetOutput("Port" + P1, Mem[P2])
+        }
+        elseif(Op == 0x1D){
+            ioSetOutput("Port" + P1, P2)
+        }
+        elseif(Op == 0x1E){
+            Mem[Stack] = Mem[P1], Stack--
+        }
+        elseif(Op == 0x1F){
+            Mem[Stack] = P1, Stack--
+        }
+        elseif(Op == 0x20){
+            Stack++
+        }
+        elseif(Op == 0x21){
+            Stack++, Mem[P1] = Mem[Stack]
+        }
+        elseif(Op == 0x22){
+            OncePerTick = P1
+        }
+        elseif(Op == 0x23){
+            Mem[P1] = sin(Mem[P2])
+        }
+        elseif(Op == 0x24){
+            Mem[P1] = sin(P2)
+        }
+        elseif(Op == 0x25){
+            Mem[P1] = cos(Mem[P2])
+        }
+        elseif(Op == 0x26){
+            Mem[P1] = cos(P2)
+        }
+        elseif(Op == 0x27){
+            Mem[P1] = abs(Mem[P2])
+        }
+        elseif(Op == 0x28){
+            IP += 3
+            break
+        }
+        IP += 3
+        if(Error) { hint("yCPU Error ! Code : " + Error, 5) }
+        if(Stop) { runOnTick(0), break }
+        if(OncePerTick) { break }
+    }
+    Ticks++
+}

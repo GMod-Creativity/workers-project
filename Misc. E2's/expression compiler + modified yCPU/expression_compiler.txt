@@ -1,13 +1,22 @@
 @name Functions
-@persist [Tk Vtk Expr]:array TI Comp:array StrI Tabs
+@inputs RAM:wirelink
+@outputs Reset
+#Tokenizer-Parser-Compiler variables
+@persist [Tk Vtk Expr Emit]:array TI Vars:table
+#Temp variables
+@persist StrI Tabs
 #UDF Variables
 @persist [Stack Local Call Return Arg Retd]:table F:string State
 
-if(first())
+if(first()) { runOnChat(1) }
+if(chatClk())
 {
-    Str = "(2 + 3) * 5 + 5 - 35 + (100 / 10)" #Gives 5 as final number
-    I = 1
-    while(Str[I] != "")
+    hideChat(1)
+    Str = owner():lastSaid()
+    CodeString = ""
+    I = 1, Tk:clear(), Vtk:clear(), Expr:clear(), Emit:clear(), TI = 1, Vars:clear()
+    Stack:clear(), Call = table(), Return = table(), Stop = 0, F = ""
+    while(Str[I] != "") #Tokenize
     {
         C = Str[I], I++
         if(C == "(") { Tk:pushString("lpr") }
@@ -16,6 +25,7 @@ if(first())
         elseif(C == "-") { Tk:pushString("sub") }
         elseif(C == "*") { Tk:pushString("mul") }
         elseif(C == "/") { Tk:pushString("div") }
+        elseif(C == ";") { Tk:pushString("eos") }
         elseif(C == " " | C == "\t" | C == "\n") { continue }
         elseif(inrange(toByte(C), 65, 90) | inrange(toByte(C), 97, 122))
         {
@@ -42,6 +52,7 @@ if(first())
             Vtk[Tk:count(), number] = TempStr:toNumber()
         }
     }
+    TI = 1
     Call = table("main")
     runOnTick(1)
 }
@@ -56,20 +67,43 @@ if(tickClk())
             if(State == 0)
             {
                 Local["Time", number] = curtime()
-                TI = 1, Call = table("parse_expr")
-            }
-            elseif(State == 3)
-            {
-                TI = 1
-                #Call = table("beg_expr")
+                TI = 1, Call = table("parse")
+                #Let's give some variables
+                Vars["curtime", number] = curtime()
+                Vars["pi", number] = pi()
             }
             elseif(State == 1)
             {
+                Call = table("compile", 1)
+            }
+            elseif(State == 2)
+            {
                 Local["Time", number] = curtime() - Local["Time", number]
-                print("Execution time : " + round(Local["Time", number], 2) + " seconds")
-                printTable(Comp)
+                print("Writing compiled code... (" + Emit:count() + " bytes)")
+                RAM:writeArray(0, Emit)
+                Reset = 1, timer("Reset", 10)
+                print("Done. Total execution time : " + round(Local["Time", number], 2) + " seconds")
                 StrI = 0, Tabs = 0
                 Stop = 1
+            }
+        }
+        elseif(F == "parse")
+        {
+            if(State == 0)
+            {
+                Expr = array()
+                Call = table("parse_expr")
+            }
+            else
+            {
+                if(Tk[TI, string] == "eos")
+                {
+                    TI++, Call = table("parse_expr")
+                }
+                else
+                {
+                    Return = table(1)
+                }
             }
         }
         elseif(F == "parse_expr")
@@ -156,46 +190,126 @@ if(tickClk())
             }
             if(Return:count()) { Expr:pushString("end_factor") }
         }
-        elseif(F == "beg_expr") #Don't care about "beg_x" functions they don't work for now
+        elseif(F == "compile")
         {
-            #Pseudo code :
-            #State == 0 -> eax = first term
-            #State  > 0 -> eax = eax (+|-) next term
             if(State == 0)
             {
-                TI++, Call = table("beg_term")
+                Local["Port", number] = 1
+                TI = 1
+                Call = table(Expr[TI, string], Arg[1, number])
             }
             else
             {
-                if(State == 1)
+                Emit:pushNumber(0x1C), Emit:pushNumber(Local["Port", number]), Emit:pushNumber(Arg[1, number])
+                Local["Port", number] = Local["Port", number] + 1
+                if(Expr[TI, string] == "beg_expr")
                 {
-                    Comp:pushString("mov eax, first term"), TI++
-                    #Call = table("beg_term")
+                    Call = table("beg_expr", Arg[1, number])
                 }
-                elseif(State > 1)
+                else
                 {
-                    Comp:pushString(Tk[TI, string] + " eax, next term"), TI++
-                    #Call = table("beg_term")
-                }
-                if(Expr[TI, string] == "end_expr")
-                {
+                    Emit:pushNumber(0x10), Emit:pushNumber(0), Emit:pushNumber(0)
                     Return = table(1)
                 }
             }
         }
+        elseif(F == "beg_expr")
+        {
+            if(State == 0)
+            {
+                TI++, Call = table("beg_term", Arg[1, number])
+                Arg[1, number] = Arg[1, number] + 1
+            }
+            elseif(State == 1)
+            {
+                if(Expr[TI, string] == "add" | Expr[TI, string] == "sub")
+                {
+                    Local["Operand", number] = TI, TI++
+                    Call = table("beg_term", Arg[1, number])
+                }
+                else
+                {
+                    TI++
+                    Return = table(1)
+                }
+            }
+            elseif(State == 2)
+            {
+                if(Expr[Local["Operand", number], string] == "add")
+                {
+                    Emit:pushNumber(0x03), Emit:pushNumber(Arg[1, number] - 1), Emit:pushNumber(Arg[1, number])
+                }
+                else
+                {
+                    Emit:pushNumber(0x04), Emit:pushNumber(Arg[1, number] - 1), Emit:pushNumber(Arg[1, number])
+                }
+                Local["_state", number] = 1, State = 1
+            }
+        }
         elseif(F == "beg_term")
         {
-            #Pseudo code :
-            #State == 0 -> eax = first factor
-            #State  > 0 -> eax = eax (*|/) next factor
-            TI++
-            while(Expr[TI, string] != "end_term") { TI++ }, TI++
-            Return = table(1)
+            if(State == 0)
+            {
+                TI++, Call = table("beg_factor", Arg[1, number])
+                Arg[1, number] = Arg[1, number] + 1
+            }
+            elseif(State == 1)
+            {
+                if(Expr[TI, string] == "mul" | Expr[TI, string] == "div")
+                {
+                    Local["Operand", number] = TI, TI++
+                    Call = table("beg_factor", Arg[1, number])
+                }
+                else
+                {
+                    TI++
+                    Return = table(1)
+                }
+            }
+            elseif(State == 2)
+            {
+                if(Expr[Local["Operand", number], string] == "mul")
+                {
+                    Emit:pushNumber(0x05), Emit:pushNumber(Arg[1, number] - 1), Emit:pushNumber(Arg[1, number])
+                }
+                else
+                {
+                    Emit:pushNumber(0x06), Emit:pushNumber(Arg[1, number] - 1), Emit:pushNumber(Arg[1, number])
+                }
+                Local["_state", number] = 1, State = 1
+            }
         }
         elseif(F == "beg_factor")
         {
-            #Pseudo code :
-            #eax = next (variable | number | expression)
+            if(State == 0)
+            {
+                TI++
+                Local["Tk", string] = Expr[TI, string]
+            }
+            if(Local["Tk", string]:left(3) == "val")
+            {
+                Emit:pushNumber(0x01), Emit:pushNumber(Arg[1, number]), Emit:pushNumber(Expr[TI, string]:sub(5):toNumber())
+                TI += 2
+                Return = table(1)
+            }
+            elseif(Local["Tk", string]:left(3) == "var")
+            {
+                Emit:pushNumber(0x01), Emit:pushNumber(Arg[1, number]), Emit:pushNumber(Vars[Expr[TI, string]:sub(5), number])
+                TI += 2
+                Return = table(1)
+            }
+            elseif(Local["Tk", string]:left(8) == "beg_expr")
+            {
+                if(State == 0)
+                {
+                    Call = table("beg_expr", Arg[1, number])
+                }
+                elseif(State == 1)
+                {
+                    TI++
+                    Return = table(1)
+                }
+            }
         }
         
         # Function processing #
@@ -230,7 +344,12 @@ if(tickClk())
     }
 }
 
-if(Stop == 1 | clk("PrintTree"))
+if(clk("Reset"))
+{
+    Reset = 0
+}
+
+if(Stop == 2 | clk("PrintTree")) #Set stop condition to 1 to print tree
 {
     if(StrI == 0) { print("------------------------ TREE ------------------------"), StrI++ }
     while(perf())
