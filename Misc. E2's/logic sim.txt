@@ -1,7 +1,7 @@
-@name Logic Simulator
+@name Wiremod
 @inputs EGP:wirelink
 @outputs [Gates Colors Wires]:table [Pos Size]:vector2 Type
-@outputs LMB RMB Use LOL LOLOL
+@outputs LMB RMB Use LOL LOLOL I1
 if(first()){
     runOnTick(1)
     EGP:egpClear()
@@ -22,8 +22,20 @@ LMB = owner():keyAttack1()
 RMB = owner():keyAttack2()
 Use = owner():keyUse()
 Pos = (round(EGP:egpCursor(owner()) / 64) * 64)
-if($LMB & LMB & Pos:x() >= 0 & Pos:y() >= 0){
-    Gates:pushTable(table(Pos, Size, Type, Wires))
+if($LMB & LMB & inrange(Pos, vec2(64, 64), vec2(484, 484))){
+    NoCreate = 0
+    for(I = 0, Gates:count()){
+        if(Gates[I, table][1, vector2]:distance(Pos) < 32){
+            NoCreate = 1
+            break
+        }
+    }
+    if(!NoCreate){
+        I1++
+        Gates:pushTable(table(Pos, Size, Type, Wires))
+        EGP:egpBox(I1 + 16, Gates[I1, table][1, vector2], Gates[I1, table][2, vector2])
+        EGP:egpColor(I1 + 16, Colors[Gates[I1, table][3, number], vector])
+    }
 }
 if($RMB & RMB){
     if(Type < 3){
@@ -32,11 +44,4 @@ if($RMB & RMB){
     else{
         Type = 1
     }
-}
-if(clk("egp") | first()){
-    for(I = 0, Gates:count()){
-        EGP:egpBox(I + 16, Gates[I, table][1, vector2], Gates[I, table][2, vector2])
-        EGP:egpColor(I + 16, Colors[Gates[I, table][3, number], vector])
-    }
-    timer("egp", 100)
 }
