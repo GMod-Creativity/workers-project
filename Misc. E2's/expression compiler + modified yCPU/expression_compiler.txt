@@ -1,317 +1,383 @@
 @name Functions
 @inputs RAM:wirelink
 @outputs Reset
-#Tokenizer-Parser-Compiler variables
-@persist [Tk Vtk Expr Emit]:array TI Vars:table
+#Tokenizer variables
+@persist Str:string I LineI LineIdx Optable:table [Tk Vtk Lookup]:array
+#Parser and compiler variables
+@persist [Tree Code]:array TI SI VI [GVars LVars CVar]:table GBool EntryPoint:string
 #Temp variables
 @persist StrI Tabs
 #UDF Variables
 @persist [Stack Local Call Return Arg Retd]:table F:string State
 
-if(first()) { runOnChat(1) }
-if(chatClk())
+if(first())
 {
-    hideChat(1)
-    Str = owner():lastSaid()
-    CodeString = ""
-    I = 1, Tk:clear(), Vtk:clear(), Expr:clear(), Emit:clear(), TI = 1, Vars:clear()
+    Optable["+", string] = "add", Optable["-", string] = "sub", Optable["*", string] = "mul", Optable["/", string] = "div"
+    Optable["=", string] = "ass", Optable["==", string] = "eq", Optable["!=", string] = "neq", Optable["<", string] = "lth"
+    Optable[">=", string] = "geq", Optable["<=", string] = "leq", Optable[">", string] = "gth", Optable[",", string] = "com"
+    Optable["(", string] = "lpr", Optable[")", string] = "rpr", Optable["{", string] = "lcb", Optable["}", string] = "rcb"
+    Optable[";", string] = "scn"
+    EntryPoint = "main", fileLoad("test.txt")
+    runOnFile(1), runOnChat(1)
+}
+elseif(chatClk())
+{
+    if(owner():lastSaid() == "/load")
+    { hideChat(1), if(fileCanLoad()) { fileLoad("test.txt") } else { print("Please wait before reloading...") } }
+}
+elseif(fileClk() & fileLoaded())
+{
+    Str = fileRead()
+    Tk:clear(), Vtk:clear(), Tree:clear(), Code:clear()
     Stack:clear(), Call = table(), Return = table(), Stop = 0, F = ""
-    while(Str[I] != "") #Tokenize
+    GVars:clear(), LVars:clear(), CVar = table()
+    I = 1, TI = 1, SI = 1, VI = 64, GBool = 0
+    print("Tokenizing..."), timer("Tokenize", 10)
+}
+elseif(clk("Tokenize"))
+{
+    Stop = 0
+    while(perf() & !Call:count())
     {
-        C = Str[I], I++
-        if(C == "(") { Tk:pushString("lpr") }
-        elseif(C == ")") { Tk:pushString("rpr") }
-        elseif(C == "+") { Tk:pushString("add") }
-        elseif(C == "-") { Tk:pushString("sub") }
-        elseif(C == "*") { Tk:pushString("mul") }
-        elseif(C == "/") { Tk:pushString("div") }
-        elseif(C == ";") { Tk:pushString("eos") }
-        elseif(C == " " | C == "\t" | C == "\n") { continue }
-        elseif(inrange(toByte(C), 65, 90) | inrange(toByte(C), 97, 122))
+        while(1)
         {
-            TempStr = C
-            C = Str[I], I++
-            while(inrange(toByte(C), 65, 90) | inrange(toByte(C), 97, 122) | inrange(toByte(C), 48, 57) | C == "_")
+            C = Str[I]
+            if(C != "")
             {
-                TempStr += C
-                C = Str[I], I++
-            }, I--
-            Tk:pushString("var")
-            Vtk[Tk:count(), string] = TempStr
-        }
-        elseif(inrange(toByte(C), 48, 57))
-        {
-            TempStr = C
-            C = Str[I], I++
-            while(inrange(toByte(C), 48, 57) | C == ".")
-            {
-                TempStr += C
-                C = Str[I], I++
-            }, I--
-            Tk:pushString("val")
-            Vtk[Tk:count(), number] = TempStr:toNumber()
+                if(C == "\n") { I++, break }
+                Tmp = Str:matchFirst("^%s+", I):length(), if(Tmp) { I += Tmp, break }
+                Tmp = Str:matchFirst("^0x[0-9A-F]+", I):length(), if(Tmp)
+                { Tk:pushString("val"), Vtk[Tk:count(), number] = Str:matchFirst("^[0-9A-F]+", I + 2):toNumber(16), I += Tmp, break }
+                Tmp = Str:matchFirst("^[0-9]+%.?[0-9]*", I):length(), if(Tmp)
+                { Tk:pushString("val"), Vtk[Tk:count(), number] = Str:matchFirst("^[0-9]+%.?[0-9]*", I):toNumber(), I += Tmp, break }
+                Tmp = Str:matchFirst("^[a-z]*", I):length(), if(Tmp)
+                {
+                    Name = Str:matchFirst("^[a-z]*", I)
+                    if(Name == "function") { Tk:pushString("func"), I += Tmp, break }
+                    elseif(Name == "return") { Tk:pushString("ret"), I += Tmp, break }
+                    elseif(Name == "if") { Tk:pushString("if"), I += Tmp, break }
+                    elseif(Name == "elseif") { Tk:pushString("eif"), I += Tmp, break }
+                    elseif(Name == "else") { Tk:pushString("els"), I += Tmp, break }
+                    elseif(Name == "while") { Tk:pushString("whl"), I += Tmp, break }
+                    elseif(Name == "global") { Tk:pushString("gbl"), I += Tmp, break }
+                }
+                Tmp = Str:matchFirst("^[a-zA-Z][a-zA-Z0-9_]*", I):length(), if(Tmp)
+                { Tk:pushString("var"), Vtk[Tk:count(), string] = Str:matchFirst("^[a-zA-Z][a-zA-Z0-9_]*", I), I += Tmp, break }
+                Token = C + (Str[I + 1] == "=" ? Str[I + 1] : ""), OpToken = Optable[Token, string]
+                if(!OpToken) { print("Unknown caracter : " + Token), Call = table("_"), break }
+                else { Tk:pushString(OpToken), I += Token:length(), break }
+            } else { TI = 1, Call = table("main"), runOnTick(1), break }
         }
     }
-    TI = 1
-    Call = table("main")
-    runOnTick(1)
+    if(!Call:count()) { timer("Tokenize", 10) }
 }
 
 if(tickClk())
 {
-    Stop = 0
-    while(maxquota() > 1000)
+    while(perf())
     {
         if(F == "main")
         {
             if(State == 0)
             {
-                Local["Time", number] = curtime()
-                TI = 1, Call = table("parse")
-                #Let's give some variables
-                Vars["curtime", number] = curtime()
-                Vars["pi", number] = pi()
+                for(I = 1, 8) { GVars["port" + I, array] = array("number", -I) }
+                Local["Time", number] = curtime(), TI = 1, Call = table("parse"), print("Parsing...")
             }
             elseif(State == 1)
             {
-                Call = table("compile", 1)
+                print("Compiling..."), Call = table("compile", 1)
             }
             elseif(State == 2)
             {
                 Local["Time", number] = curtime() - Local["Time", number]
-                print("Writing compiled code... (" + Emit:count() + " bytes)")
-                RAM:writeArray(0, Emit)
+                print("Writing compiled code to RAM... (" + Code:count() + " bytes)")
+                RAM:writeArray(0, Code)
+                #for(I = 1, Code:count() / 3) { print(format("%.4X | %.4i, %.4i", Code[I * 3 - 2, number], Code[I * 3 - 1, number], Code[I * 3, number])) }
                 Reset = 1, timer("Reset", 10)
-                print("Done. Total execution time : " + round(Local["Time", number], 2) + " seconds")
-                StrI = 0, Tabs = 0
-                Stop = 1
+                print("Done ! Total execution time : " + round(Local["Time", number], 2) + " seconds")
+                StrI = 0, Tabs = 0, Stop = -1 # No error
             }
         }
         elseif(F == "parse")
         {
-            if(State == 0)
-            {
-                Expr = array()
-                Call = table("parse_expr")
-            }
-            else
-            {
-                if(Tk[TI, string] == "eos")
-                {
-                    TI++, Call = table("parse_expr")
-                }
-                else
-                {
-                    Return = table(1)
-                }
-            }
+            if(State == 0) { Tree = array(), Call = table("parse_block") }
+            else { if(TI - 1 != Tk:count()) { Call = table("parse_block") } else { Return = table(1) } }
         }
-        elseif(F == "parse_expr")
+        elseif(F == "parse_block") #func var ([ var { "," var } ]) "{" [{ stmt }] "}"
         {
             if(State == 0)
             {
-                Expr:pushString("beg_expr")
-                Call = table("parse_term")
+                Tree:pushString("beg_block")
+                if(Tk[TI, string] == "func")
+                {
+                    GBool = 1, TI++, Type = GVars[Vtk[TI, string], array][1, string], FuncName = Vtk[TI, string], LVars[SI, table] = table(), CVar = LVars[SI, table], SI++
+                    if(Type == "function" | (Type & Type != "function")) { print(Vtk[TI, string] + " already declared as '" + Type + "'"), Stop = TI }
+                    else
+                    {
+                        Tree:pushString("func_" + FuncName), GVars[FuncName, array] = array("function"), TI++, I = 0
+                        if(Tk[TI, string] != "lpr") { print("Expected '(' after function identifier"), Stop = TI, break } else { TI++ }
+                        Local["_state", number] = State = 1, if(Tk[TI, string] == "rpr") { GVars[FuncName, array]:setNumber(2, 0), TI++ }
+                        else
+                        {
+                            I = 0, while(1)
+                            {
+                                if(Tk[TI, string] == "var")
+                                {
+                                    TI++, Token = Tk[TI, string]
+                                    if(Token == "com" | Token == "rpr")
+                                    {
+                                        ArgS = Vtk[TI - 1, string]
+                                        if(GVars[ArgS, array][1, string]) { print("Argument " + ArgS + " is already defined as a global !"), Stop = TI, break }
+                                        else { CVar[ArgS, array] = array("number", VI), VI++, I++, TI++ }
+                                    }
+                                    else { print("Expected ',' or ')' after argument " + (I + 1) + " of function " + FuncName), Stop = TI, break }
+                                    if(Token == "rpr") { GVars[FuncName, array]:setNumber(2, I), break }
+                                }
+                            }
+                        }
+                    }
+                }
+                elseif(Tk[TI, string] == "gbl")
+                {
+                    if(GBool) { print("You must declare global variables before functions !"), Stop = TI }
+                    else
+                    {
+                        TI++
+                        if(Tk[TI, string] == "var")
+                        {
+                            if(GVars[Vtk[TI, string], array][1, string])
+                            { print(Vtk[TI, string] + " already defined as '" + GVars[Vtk[TI, string], array][1, string] + "'"), Stop = TI }
+                            else
+                            {
+                                GVars[Vtk[TI, string], array] = array("number", VI), VI++, TI++, if(Tk[TI, string] == "scn") { TI++, Return = table(1) }
+                                else { print("Expected ';' after global variable '" + Vtk[TI - 1, string] + "'"), Stop = TI }
+                            }
+                        }
+                    }
+                } else { print("Expected block declaration"), Stop = TI }
             }
             else
             {
-                if(Tk[TI, string] == "add" | Tk[TI, string] == "sub")
-                {
-                    Expr:pushString(Tk[TI, string]), TI++
-                    Call = table("parse_term")
-                }
-                else
-                {
-                    Expr:pushString("end_expr")
-                    Return = table(1)
-                }
+                if(State == 1) { if(Tk[TI, string] == "lcb") { TI++ } else { print("Expected '{' after function declaration"), Stop = TI } }
+                if(Tk[TI, string] != "rcb") { Call = table("parse_stmt") } else { TI++, Return = table(1) }
             }
-            
+            if(Return:count()) { Tree:pushString("end_block") }
         }
-        elseif(F == "parse_term")
+        elseif(F == "parse_stmt") #var "=" expression ";" | function "(" [ expression { "," expression } ] ")" ";"
         {
             if(State == 0)
             {
-                Expr:pushString("beg_term")
-                Call = table("parse_factor")
+                Tree:pushString("beg_stmt")
+                if(Tk[TI, string] == "var") # var "=" expression ";" | var({expression "," ...}) ";"
+                {
+                    Token = Vtk[TI, string], NextToken = Tk[TI + 1, string], Type = GVars[Token, array][1, string]
+                    Local["Ptr", number] = GVars[Token, array][2, number]
+                    if(!Type) { Type = CVar[Token, array][1, string], Local["Ptr", number] = CVar[Token, array][2, number] }
+                    if(NextToken == "ass")
+                    {
+                        if(!Type)
+                        { CVar[Vtk[TI, string], array] = array("number", VI), Type = "number", Local["Ptr", number] = VI, VI++ }
+                        if(Type != "number") { print(Token + " of type '" + Type + "' can't be assigned to a number"), Stop = TI }
+                        else { Local[1, string] = "ass", Tree:pushString("ass_expr"), TI += 2, Call = table("parse_expr") }
+                    }
+                    elseif(NextToken == "lpr")
+                    {
+                        if(Type == "function")
+                        {
+                            Tree:pushString("call_" + Token), Tree:pushString(GVars[Token, array][2, number]:toString())
+                            Local[1, string] = "call", Local[2, number] = GVars[Token, array][2, number], Local[3, number] = 0, TI += 2
+                            if(Local[2, number]) { Call = table("parse_expr"), Local[3, number] = Local[3, number] + 1 } else { Local["_state", number] = State = 1 }
+                        }
+                        else { print("No such function : " + Vtk[TI, string]), Stop = TI }
+                    } else { print("Expected function call or variable assignement with " + Vtk[TI, string]), Stop = TI }
+                }
+                elseif(Tk[TI, string] == "asm")
+                {
+                    TI++
+                }
+                else { print("Expected statement"), Stop = TI }
             }
             else
             {
-                if(Tk[TI, string] == "mul" | Tk[TI, string] == "div")
+                if(Local[1, string] == "ass")
                 {
-                    Expr:pushString(Tk[TI, string]), TI++
-                    Call = table("parse_factor")
+                    if(Tk[TI, string] == "scn") { Tree:pushString(Local["Ptr", number]:toString()), TI++, Return = table(1) }
+                    else { print("Expected ';' after expression"), Stop = TI }
                 }
-                else
+                elseif(Local[1, string] == "call")
                 {
-                    Expr:pushString("end_term")
-                    Return = table(1)
+                    if(Tk[TI, string] == "com" & Local[2, number]) { TI++, Call = table("parse_expr"), Local[3, number] = Local[3, number] + 1 }
+                    elseif(Tk[TI, string] == "rpr")
+                    {
+                        TI++, if(Tk[TI, string] == "scn")
+                        { if(Local[3, number] == Local[2, number]) { TI++, Return = table(1) }
+                        else { print(format("Incorrect argument count (%s instead of %s)", Local[3, number], Local[2, number])), Stop = TI } }
+                        else { print("Expected ';' after function call"), Stop = TI }
+                    }
+                    else { print("Expected ',' or ')' after expression/function"), Stop = TI }
                 }
+            }
+            if(Return:count()) { Tree:pushString("end_stmt") }
+        }
+        elseif(F == "parse_expr") # term [ { term ("+"|"-") } ]
+        {
+            if(State == 0) { Tree:pushString("beg_expr"), Call = table("parse_term") }
+            else
+            {
+                if(Tk[TI, string] == "add" | Tk[TI, string] == "sub") { Tree:pushString(Tk[TI, string]), TI++, Call = table("parse_term") }
+                else { Tree:pushString("end_expr"), Return = table(1) }
             }
         }
-        elseif(F == "parse_factor")
+        elseif(F == "parse_term") #factor [ { factor ("*"|"/") } ]
         {
-            if(State == 0)
+            if(State == 0) { Tree:pushString("beg_term"), Call = table("parse_factor") }
+            else
             {
-                Expr:pushString("beg_factor")
-                Local["Token", string] = Tk[TI, string]
+                if(Tk[TI, string] == "mul" | Tk[TI, string] == "div") { Tree:pushString(Tk[TI, string]), TI++, Call = table("parse_factor") }
+                else { Tree:pushString("end_term"), Return = table(1) }
             }
-            if(Local["Token", string] == "val")
-            {
-                Expr:pushString(Tk[TI, string] + "_" + Vtk[TI, number])
-                TI++, Return = table(1)
-            }
+        }
+        elseif(F == "parse_factor") #value | variable | "(" expression ")" | function "(" [expression { "," expression } ] ")"
+        {
+            if(State == 0) { Tree:pushString("beg_factor"), Local["Token", string] = Tk[TI, string] }
+            if(Local["Token", string] == "val") { Tree:pushString(Tk[TI, string] + "_" + Vtk[TI, number]), TI++, Return = table(1) }
             elseif(Local["Token", string] == "var")
             {
-                Expr:pushString(Tk[TI, string] + "_" + Vtk[TI, string])
-                TI++, Return = table(1)
+                Type = GVars[Vtk[TI, string], array][1, string], Ptr = GVars[Vtk[TI, string], array][2, number]
+                if(!Type) { Type = CVar[Vtk[TI, string], array][1, string], Ptr = CVar[Vtk[TI, string], array][2, number] }
+                if(Type == "number") { Tree:pushString("var_" + Ptr), TI++, Return = table(1) }
+                else { print("No such number variable : " + Vtk[TI, string]), Stop = TI }
             }
             elseif(Local["Token", string] == "lpr")
             {
-                if(State == 0)
-                {
-                    Call = table("parse_expr"), TI++
-                }
-                elseif(State == 1)
-                {
-                    if(Tk[TI, string] == "rpr")
-                    {
-                        TI++, Return = table(1)
-                    }
-                    else
-                    {
-                        hint("Expected ')' after expression", 5), Stop = 1
-                    }
-                }
+                if(State == 0) { Call = table("parse_expr"), TI++ }
+                elseif(State == 1) { if(Tk[TI, string] == "rpr") { TI++, Return = table(1) } else { print("Expected ')' after expression"), Stop = TI } }
             }
             else
             {
-                hint("Expected value, variable or expression", 5), Stop = 1
+                print("Expected value, variable, expression or function"), Stop = TI
             }
-            if(Return:count()) { Expr:pushString("end_factor") }
+            if(Return:count()) { Tree:pushString("end_factor") }
         }
         elseif(F == "compile")
         {
             if(State == 0)
             {
-                Local["Port", number] = 1
-                TI = 1
-                Call = table(Expr[TI, string], Arg[1, number])
+                if(GVars[EntryPoint, array][1, string] == "function")
+                {
+                    Code:pushNumber(0x19), Code:pushNumber(0) , Code:pushNumber(0)
+                    Code:pushNumber(0x10), Code:pushNumber(0), Code:pushNumber(0) #Stop the CPU
+                    TI = 1, Call = table(Tree[TI, string], Arg[1, number])
+                }
+                else { print("Compiler : no entry point '" + EntryPoint + "', aborting..."), Stop = -2 }
             }
             else
             {
-                Emit:pushNumber(0x1C), Emit:pushNumber(Local["Port", number]), Emit:pushNumber(Arg[1, number])
-                Local["Port", number] = Local["Port", number] + 1
-                if(Expr[TI, string] == "beg_expr")
+                if(Tree[TI, string]) { Call = table(Tree[TI, string], Arg[1, number]) }
+                else { Code:setNumber(2, GVars[EntryPoint, array][3, number]), Return = table(1) }
+            }
+        }
+        elseif(F == "beg_block")
+        {
+            if(State == 0)
+            {
+                TI++
+                if(Tree[TI, string]:left(4) == "func")
                 {
-                    Call = table("beg_expr", Arg[1, number])
+                    GVars[Tree[TI, string]:sub(6), array]:setNumber(3, Code:count()), TI++, if(Tree[TI, string] == "beg_stmt")
+                    { Call = table("beg_stmt", Arg[1, number]) } else { TI++, Return = table(1) }
                 }
                 else
                 {
-                    Emit:pushNumber(0x10), Emit:pushNumber(0), Emit:pushNumber(0)
-                    Return = table(1)
+                    TI++, Return = table(1)
+                }
+            }
+            else
+            {
+                if(Tree[TI, string] == "beg_stmt") { Call = table("beg_stmt", Arg[1, number]) }
+                else { Code:pushNumber(0x1A), Code:pushNumber(0), Code:pushNumber(0), TI++, Return = table(1) }
+            }
+        }
+        elseif(F == "beg_stmt")
+        {
+            if(State == 0)
+            {
+                TI++, if(Tree[TI, string] == "ass_expr") { Local[1, string] = "ass_expr", TI++, Call = table("beg_expr", Arg[1, number]) }
+                elseif(Tree[TI, string]:left(4) == "call")
+                {
+                    Local[1, string] = Tree[TI, string], TI++, Local[2, number] = Tree[TI, string]:toNumber()
+                    Local[3, number] = Tree[TI, string]:toNumber(), TI++, Local["_state", number] = State = 1
+                }
+                elseif(Tree[TI, string]:left(3) == "asm")
+                {
+                    AsmCode = Tree[TI, string]:explode("_"), TI += 2, Return = table(1)
+                    Code:pushNumber(AsmCode[2, string]:toNumber()), Code:pushNumber(AsmCode[3, string]:toNumber()), Code:pushNumber(AsmCode[4, string]:toNumber())
+                }
+            }
+            else
+            {
+                if(Local[1, string] == "ass_expr")
+                {
+                    Ptr = Tree[TI, string]:toNumber(), if(Ptr >= 0)
+                    { Code:pushNumber(0x02), Code:pushNumber(Tree[TI, string]:toNumber()), Code:pushNumber(Arg[1, number]), TI += 2, Return = table(1) }
+                    elseif(Ptr < 0) { Code:pushNumber(0x1C), Code:pushNumber(-Ptr), Code:pushNumber(Arg[1, number]), TI += 2, Return = table(1) } #Assign to port
+                }
+                elseif(Local[1, string]:left(4) == "call")
+                {
+                    if(State > 1) { Code:pushNumber(0x1E), Code:pushNumber(Arg[1, number]), Code:pushNumber(0) }
+                    if(Local[2, number] == 0)
+                    {
+                        TI++, Code:pushNumber(0x19), Code:pushNumber(GVars[Local[1, string]:sub(6), array][3, number]), Code:pushNumber(0)
+                        if(Local[3, number] > 0) { Code:pushNumber(0x07), Code:pushNumber(0), Code:pushNumber(Local[3, number]) }, Return = table(1)
+                    }
+                    if(Local[2, number] > 0) { Call = table("beg_expr", Arg[1, number]), Local[2, number] = Local[2, number] - 1 }
                 }
             }
         }
         elseif(F == "beg_expr")
         {
-            if(State == 0)
-            {
-                TI++, Call = table("beg_term", Arg[1, number])
-                Arg[1, number] = Arg[1, number] + 1
-            }
+            if(State == 0) { TI++, Call = table("beg_term", Arg[1, number]), Arg[1, number] = Arg[1, number] + 1 }
             elseif(State == 1)
             {
-                if(Expr[TI, string] == "add" | Expr[TI, string] == "sub")
-                {
-                    Local["Operand", number] = TI, TI++
-                    Call = table("beg_term", Arg[1, number])
-                }
-                else
-                {
-                    TI++
-                    Return = table(1)
-                }
+                if(Tree[TI, string] == "add" | Tree[TI, string] == "sub") { Local["Operand", number] = TI, TI++, Call = table("beg_term", Arg[1, number]) }
+                else { TI++, Return = table(1) }
             }
             elseif(State == 2)
             {
-                if(Expr[Local["Operand", number], string] == "add")
-                {
-                    Emit:pushNumber(0x03), Emit:pushNumber(Arg[1, number] - 1), Emit:pushNumber(Arg[1, number])
-                }
-                else
-                {
-                    Emit:pushNumber(0x04), Emit:pushNumber(Arg[1, number] - 1), Emit:pushNumber(Arg[1, number])
-                }
-                Local["_state", number] = 1, State = 1
+                if(Tree[Local["Operand", number], string] == "add") { Code:pushNumber(0x03), Code:pushNumber(Arg[1, number] - 1), Code:pushNumber(Arg[1, number]) }
+                else { Code:pushNumber(0x04), Code:pushNumber(Arg[1, number] - 1), Code:pushNumber(Arg[1, number]) }, Local["_state", number] = 1, State = 1
             }
         }
         elseif(F == "beg_term")
         {
-            if(State == 0)
-            {
-                TI++, Call = table("beg_factor", Arg[1, number])
-                Arg[1, number] = Arg[1, number] + 1
-            }
+            if(State == 0) { TI++, Call = table("beg_factor", Arg[1, number]), Arg[1, number] = Arg[1, number] + 1 }
             elseif(State == 1)
             {
-                if(Expr[TI, string] == "mul" | Expr[TI, string] == "div")
-                {
-                    Local["Operand", number] = TI, TI++
-                    Call = table("beg_factor", Arg[1, number])
-                }
-                else
-                {
-                    TI++
-                    Return = table(1)
-                }
+                if(Tree[TI, string] == "mul" | Tree[TI, string] == "div") { Local["Operand", number] = TI, TI++, Call = table("beg_factor", Arg[1, number]) }
+                else { TI++, Return = table(1) }
             }
             elseif(State == 2)
             {
-                if(Expr[Local["Operand", number], string] == "mul")
-                {
-                    Emit:pushNumber(0x05), Emit:pushNumber(Arg[1, number] - 1), Emit:pushNumber(Arg[1, number])
-                }
-                else
-                {
-                    Emit:pushNumber(0x06), Emit:pushNumber(Arg[1, number] - 1), Emit:pushNumber(Arg[1, number])
-                }
-                Local["_state", number] = 1, State = 1
+                if(Tree[Local["Operand", number], string] == "mul") { Code:pushNumber(0x05), Code:pushNumber(Arg[1, number] - 1), Code:pushNumber(Arg[1, number]) }
+                else { Code:pushNumber(0x06), Code:pushNumber(Arg[1, number] - 1), Code:pushNumber(Arg[1, number]) }, Local["_state", number] = 1, State = 1
             }
         }
         elseif(F == "beg_factor")
         {
-            if(State == 0)
-            {
-                TI++
-                Local["Tk", string] = Expr[TI, string]
-            }
+            if(State == 0) { TI++, Local["Tk", string] = Tree[TI, string] }
             if(Local["Tk", string]:left(3) == "val")
-            {
-                Emit:pushNumber(0x01), Emit:pushNumber(Arg[1, number]), Emit:pushNumber(Expr[TI, string]:sub(5):toNumber())
-                TI += 2
-                Return = table(1)
-            }
+            { Code:pushNumber(0x01), Code:pushNumber(Arg[1, number]), Code:pushNumber(Tree[TI, string]:sub(5):toNumber()), TI += 2, Return = table(1) }
             elseif(Local["Tk", string]:left(3) == "var")
             {
-                Emit:pushNumber(0x01), Emit:pushNumber(Arg[1, number]), Emit:pushNumber(Vars[Expr[TI, string]:sub(5), number])
-                TI += 2
-                Return = table(1)
+                Ptr = Tree[TI, string]:sub(5):toNumber(), if(Ptr >= 0)
+                { Code:pushNumber(0x02), Code:pushNumber(Arg[1, number]), Code:pushNumber(Ptr), TI += 2, Return = table(1) }
+                elseif(Ptr < 0) { Code:pushNumber(0x1B), Code:pushNumber(Arg[1, number]), Code:pushNumber(-Ptr), TI += 2, Return = table(1) }
             }
             elseif(Local["Tk", string]:left(8) == "beg_expr")
-            {
-                if(State == 0)
-                {
-                    Call = table("beg_expr", Arg[1, number])
-                }
-                elseif(State == 1)
-                {
-                    TI++
-                    Return = table(1)
-                }
-            }
+            { if(State == 0) { Call = table("beg_expr", Arg[1, number]) } elseif(State == 1) { TI++, Return = table(1) } }
         }
         
+        if(Stop != 0) { Stack:clear(), runOnTick(0), if(Stop > 0) { print("Error at token " + Stop + " (" + Tk[Stop, string] + "), aborting...") }, break }
         # Function processing #
         if(Call:count())
         {
@@ -336,37 +402,29 @@ if(tickClk())
             State = Context["_state", number]
             Local = Context, Return = table()
         }
-        elseif(Stop)
-        {
-            Stack:clear()
-            runOnTick(0), break
-        }
     }
 }
 
-if(clk("Reset"))
-{
-    Reset = 0
-}
+if(clk("Reset")) { Reset = 0 }
 
-if(Stop == 2 | clk("PrintTree")) #Set stop condition to 1 to print tree
+if(Stop == 1 | clk("PrintTree")) #Set stop condition to -1 to print tree
 {
     if(StrI == 0) { print("------------------------ TREE ------------------------"), StrI++ }
     while(perf())
     {
-        V = Expr[StrI, string]
+        V = Tree[StrI, string]
         Str = ""
         if(V:left(4) == "end_") { Tabs-- }
         for(I = 1, Tabs) { Str += "\t" }
         if(V:left(4) == "beg_") { Tabs++ }
         print(Str + V), StrI++
-        if(StrI > Expr:count())
+        if(StrI > Tree:count())
         {
             print("------------------------------------------------------")
             break
         }
     }
-    if(StrI < Expr:count())
+    if(StrI < Tree:count())
     {
         timer("PrintTree", 10)
     }

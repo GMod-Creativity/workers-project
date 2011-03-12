@@ -1,7 +1,7 @@
 @name yCPU
 @inputs RAM:wirelink Mem:wirelink Reset Port1 Port2 Port3 Port4 Port5 Port6 Port7 Port8
-@outputs Output:string Port1 Port2 Port3 Port4 Port5 Port6 Port7 Port8
-@persist IP Stack OncePerTick Stop Ticks Comp
+@outputs Output:string Led Port1 Port2 Port3 Port4 Port5 Port6 Port7 Port8
+@persist IP OncePerTick Stop Ticks Comp
 @trigger Reset
 ###################################################
 #   __     __   _______    _______    __    __    #
@@ -14,12 +14,12 @@
 #                                                 #
 ###################################################
 
-if(first()){
+if(first() | (~Reset & Reset))
+{
+    Halt = 0, IP = 0, Ticks = 0, Comp = 0, OncePerTick = 0, Stop = 0
+    Mem[0] = 1048575 #Stack starts at the end of memory
+    Led = 1
     runOnTick(1)
-}
-elseif(~Reset & Reset){
-    Halt = 0, IP = 0, Ticks = 0, Comp = 0, OncePerTick = 0
-    Stack = 1048575 #Stack starts at the end of memory
 }
 elseif(tickClk()){
     while(perf()){
@@ -29,8 +29,8 @@ elseif(tickClk()){
         P2 = RAM[IP + 2]
         
         if(Op == 0x00){
+            Led = 0
             Stop = 1
-            break
         }
         elseif(Op == 0x01){
             Mem[P1] = P2
@@ -94,7 +94,7 @@ elseif(tickClk()){
             IP = P1 - 3
         }
         elseif(Op == 0x13 & Comp != 0){
-            IP = P1 + 3
+            IP = P1 - 3
         }
         elseif(Op == 0x14){
             Mem[Mem[P1]] = P2
@@ -112,11 +112,11 @@ elseif(tickClk()){
             Output = Mem:readString(P1) #It's the same as opcode 0x0D actually
         }
         elseif(Op == 0x19){
-            Mem[Stack] = IP, Stack--
+            Mem[Mem[0]] = IP + 3, Mem[0] = Mem[0] - 1
             IP = P1 - 3
         }
         elseif(Op == 0x1A){
-            Stack++, IP = Mem[Stack]
+            Mem[0] = Mem[0] + 1, IP = Mem[Mem[0]] - 3
         }
         elseif(Op == 0x1B){
             Mem[P1] = ioGetInputNumber("Port" + P2)
@@ -128,16 +128,16 @@ elseif(tickClk()){
             ioSetOutput("Port" + P1, P2)
         }
         elseif(Op == 0x1E){
-            Mem[Stack] = Mem[P1], Stack--
+            Mem[Mem[0]] = Mem[P1], Mem[0] = Mem[0] - 1
         }
         elseif(Op == 0x1F){
-            Mem[Stack] = P1, Stack--
+            Mem[Mem[0]] = P1, Mem[0] = Mem[0] - 1
         }
         elseif(Op == 0x20){
-            Stack++
+            Mem[0] = Mem[0] + 1
         }
         elseif(Op == 0x21){
-            Stack++, Mem[P1] = Mem[Stack]
+            Mem[0] = Mem[0] + 1, Mem[P1] = Mem[Mem[0]]
         }
         elseif(Op == 0x22){
             OncePerTick = P1
