@@ -1,4 +1,4 @@
-@name Functions
+@name WMBasic
 @inputs RAM:wirelink
 @outputs Reset
 #Tokenizer variables
@@ -9,6 +9,14 @@
 @persist StrI Tabs
 #UDF Variables
 @persist [Stack Local Call Return Arg Retd]:table F:string State
+
+#############################################
+###                         WMBasic Compiler                          ###
+###                                 By Mat000                                  ###
+### Credits :                                                                      ###
+### "Algorithms + Data Structures = Programs" ###
+### Tokenizer code from E2                                        ###
+#############################################
 
 if(first())
 {
