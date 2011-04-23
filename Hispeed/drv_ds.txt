@@ -1,0 +1,81 @@
+#define DS_RES_WIDTH 1048572
+#define DS_RES_HEIGHT 1048573
+void dsSetPixel(float x, float y, float r, float g, float b){
+    *(65536 + (x - 1) + y * *(65536 + DS_RES_WIDTH)) = r * 65536 + g * 256 + b;
+    return;
+}
+float dsGetPixel(float x, float y){
+    return (x - 1) + y * *(65536 + DS_RES_WIDTH);
+}
+void dsSetCM(float a){
+    *(65536 + 1048569) = a;
+    return;
+}
+void dsSetRes(float w, float h){
+    *(65536 + DS_RES_WIDTH) = w;
+    *(65536 + DS_RES_HEIGHT) = h;
+    return;
+}
+void dsClk(float a){
+    *(65536 + 1048575) = a;
+    return;
+}
+void dsClear(){
+    *(65536 + 1048574) = 1;
+    *(65536 + 1048574) = 0;
+    return;
+}
+void dsRectWH(float x, float y, float w, float h, float r, float g, float b){
+    float i = 0;
+    float j = -1;
+    float k = -1;
+    while(i < (w + 1) * (h + 1)){
+        i++;
+        j++;
+        if(j > w){
+            j = 0;
+            k++;
+        }
+        dsSetPixel(x + j, y + k, r, g, b);
+    }
+    return;
+}
+void dsLine(float x1, float y1, float x2, float y2, float r, float g, float bl){
+    float mu, step;
+    R0 = (x2 - x1);
+    R1 = (y2 - y1);
+    step = R0 * R0 + R1 * R1;
+    fpwr step, 0.5;
+    finv step;
+    for(mu = 0; mu < 1 + step; mu += step){
+        port2 = mu;
+        R2 = x1 + R0 * mu;
+        R3 = y1 + R1 * mu;
+        frnd R2; frnd R3;
+        dsSetPixel(R2, R3 - 1, r, g, bl);
+    }
+    return;
+}
+void dsCircle(float x, float y, float radius, float fill, float r, float g, float b)
+{
+    float i, j;
+    float x1 = x - radius, y1 = y - radius, x2 = x + radius + 1, y2 = y + radius + 1;
+    inc fill;
+    for(j = y1; j < y2; j++)
+    {
+        R1 = j - y;
+        R1 = R1 * R1;
+        for(i = x1; i < x2; i++)
+        {
+            R0 = i - x;
+            R0 = R0 * R0 + R1;
+            fpwr R0, 0.5;
+            if((R0 > radius - fill) && (R0 < radius))
+                dsSetPixel(i, j, r, g, b);
+        }
+    }
+}
+void dsClrScr(float r, float g, float b){
+    dsRectWH(1, 1, *(65536 + DS_RES_WIDTH), *(65536 + DS_RES_HEIGHT), r, g, b);
+    return;
+}

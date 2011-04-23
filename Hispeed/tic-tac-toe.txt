@@ -1,0 +1,251 @@
+#pragma set OutputFinalListing true
+main();
+#include <drivers\drv_ds.txt>
+jmp end;
+void main(){
+    float filled[9];
+    float turn, i;
+    dsClk(1);
+    dsSetCM(2);
+    dsSetRes(64, 64);
+    dsClear();
+    dsLine(21, 1, 21, 63, 0, 0, 255);
+    dsLine(43, 1, 43, 63, 0, 0, 255);
+    dsLine(1, 21, 63, 21, 0, 0, 255);
+    dsLine(1, 43, 63, 43, 0, 0, 255);
+    while(1){
+        port0 = filled[0];
+        if((port0 & filled[0] == 0) & turn == 0){
+            drawX(1);
+            filled[0] = 1;
+            turn = 1;
+        }
+        else if((port1 & filled[1] == 0) & turn == 0){
+            drawX(2);
+            filled[1] = 1;
+            turn = 1;
+        }
+        else if((port2 & filled[2] == 0) & turn == 0){
+            drawX(3);
+            filled[2] = 1;
+            turn = 1;
+        }
+        else if((port3 & filled[3] == 0) & turn == 0){
+            drawX(4);
+            filled[3] = 1;
+            turn = 1;
+        }
+        else if((port4 & filled[4] == 0) & turn == 0){
+            drawX(5);
+            filled[4] = 1;
+            turn = 1;
+        }
+        else if((port5 & filled[5] == 0) & turn == 0){
+            drawX(6);
+            filled[5] = 1;
+            turn = 1;
+        }
+        else if((port6 & filled[6] == 0) & turn == 0){
+            drawX(7);
+            filled[6] = 1;
+            turn = 1;
+        }
+        else if((port7 & filled[7] == 0) & turn == 0){
+            drawX(8);
+            filled[7] = 1;
+            turn = 1;
+        }
+        else if((port8 & filled[8] == 0) & turn == 0){
+            drawX(9);
+            filled[8] = 1;
+            turn = 1;
+        }
+        else if((port9 & filled[0] == 0) & turn == 1){
+            drawO(1);
+            filled[0] = 2;
+            turn = 0;
+        }
+        else if((port10 & filled[1] == 0) & turn == 1){
+            drawO(2);
+            filled[1] = 2;
+            turn = 0;
+        }
+        else if((port11 & filled[2] == 0) & turn == 1){
+            drawO(3);
+            filled[2] = 2;
+            turn = 0;
+        }
+        else if((port12 & filled[3] == 0) & turn == 1){
+            drawO(4);
+            filled[3] = 2;
+            turn = 0;
+        }
+        else if((port13 & filled[4] == 0) & turn == 1){
+            drawO(5);
+            filled[4] = 2;
+            turn = 0;
+        }
+        else if((port14 & filled[5] == 0) & turn == 1){
+            drawO(6);
+            filled[5] = 2;
+            turn = 0;
+        }
+        else if((port15 & filled[6] == 0) & turn == 1){
+            drawO(7);
+            filled[6] = 2;
+            turn = 0;
+        }
+        else if((port16 & filled[7] == 0) & turn == 1){
+            drawO(8);
+            filled[7] = 2;
+            turn = 0;
+        }
+        else if((port17 & filled[8] == 0) & turn == 1){
+            drawO(9);
+            filled[8] = 2;
+            turn = 0;
+        }
+        if(((filled[0] == 1) & (filled[1] == 1) & (filled[2] == 1)) |
+           ((filled[3] == 1) & (filled[4] == 1) & (filled[5] == 1)) |
+           ((filled[6] == 1) & (filled[7] == 1) & (filled[8] == 1)) |
+           ((filled[0] == 1) & (filled[3] == 1) & (filled[6] == 1)) |
+           ((filled[1] == 1) & (filled[4] == 1) & (filled[7] == 1)) |
+           ((filled[2] == 1) & (filled[5] == 1) & (filled[8] == 1)) |
+           ((filled[0] == 1) & (filled[4] == 1) & (filled[8] == 1)) |
+           ((filled[6] == 1) & (filled[4] == 1) & (filled[2] == 1))){
+            dsClear();
+            dsLine(1, 1, 64, 64, 255, 0, 0);
+            dsLine(1, 64, 64, 1, 255, 0, 0);
+            for(i = 0; i < 9; i++){
+                port1 = filled[0];
+                *(filled + i) = 0;
+            }
+            turn = 0;
+            dsClrScr(0, 0, 0);
+            dsLine(21, 1, 21, 63, 0, 0, 255);
+            dsLine(43, 1, 43, 63, 0, 0, 255);
+            dsLine(1, 21, 63, 21, 0, 0, 255);
+            dsLine(1, 43, 63, 43, 0, 0, 255);
+        }
+        else if(((filled[0] == 2) & (filled[1] == 2) & (filled[2] == 2)) |
+           ((filled[3] == 2) & (filled[4] == 2) & (filled[5] == 2)) |
+           ((filled[6] == 2) & (filled[7] == 2) & (filled[8] == 2)) |
+           ((filled[0] == 2) & (filled[3] == 2) & (filled[6] == 2)) |
+           ((filled[1] == 2) & (filled[4] == 2) & (filled[7] == 2)) |
+           ((filled[2] == 2) & (filled[5] == 2) & (filled[8] == 2)) |
+           ((filled[0] == 2) & (filled[4] == 2) & (filled[8] == 2)) |
+           ((filled[6] == 2) & (filled[4] == 2) & (filled[2] == 2))){
+            dsClear();
+            dsCircle(32, 32, 32, 4, 0, 255, 0);
+            for(i = 0; i < 9; i++){
+                port1 = filled[0];
+                *(filled + i) = 0;
+            }
+            turn = 0;
+            dsClrScr(0, 0, 0);
+            dsLine(21, 1, 21, 63, 0, 0, 255);
+            dsLine(43, 1, 43, 63, 0, 0, 255);
+            dsLine(1, 21, 63, 21, 0, 0, 255);
+            dsLine(1, 43, 63, 43, 0, 0, 255);
+        }
+        if((filled[0] != 0) & (filled[1] != 0) & (filled[2] != 0) &
+           (filled[3] != 0) & (filled[4] != 0) & (filled[5] != 0) &
+           (filled[6] != 0) & (filled[7] != 0) & (filled[0] != 0)){
+            for(i = 0; i < 9; i++){
+                port1 = filled[0];
+                *(filled + i) = 0;
+            }
+            turn = 0;
+            dsClrScr(0, 0, 0);
+            dsLine(21, 1, 21, 63, 0, 0, 255);
+            dsLine(43, 1, 43, 63, 0, 0, 255);
+            dsLine(1, 21, 63, 21, 0, 0, 255);
+            dsLine(1, 43, 63, 43, 0, 0, 255);
+        }
+    } 
+    return;
+}
+void drawX(float cell){
+    float x, y;
+    if(cell == 1){
+        x = 11;
+        y = 11;
+    }
+    else if(cell == 2){
+        x = 32;
+        y = 11;
+    }
+    else if(cell == 3){
+        x = 54;
+        y = 11;
+    }
+    else if(cell == 4){
+        x = 11;
+        y = 32;
+    }
+    else if(cell == 5){
+        x = 32;
+        y = 32;
+    }
+    else if(cell == 6){
+        x = 54;
+        y = 32;
+    }
+    else if(cell == 7){
+        x = 11;
+        y = 54;
+    }
+    else if(cell == 8){
+        x = 32;
+        y = 54;
+    }
+    else if(cell == 9){
+        x = 54;
+        y = 54;
+    }
+    dsLine(x - 6, y - 6, x + 6, y + 6, 255, 0, 0);
+    dsLine(x - 6, y + 6, x + 6, y - 6, 255, 0, 0);
+    return;
+}
+void drawO(float cell){
+    float x, y;
+    if(cell == 1){
+        x = 11;
+        y = 11;
+    }
+    else if(cell == 2){
+        x = 32;
+        y = 11;
+    }
+    else if(cell == 3){
+        x = 54;
+        y = 11;
+    }
+    else if(cell == 4){
+        x = 11;
+        y = 32;
+    }
+    else if(cell == 5){
+        x = 32;
+        y = 32;
+    }
+    else if(cell == 6){
+        x = 54;
+        y = 32;
+    }
+    else if(cell == 7){
+        x = 11;
+        y = 54;
+    }
+    else if(cell == 8){
+        x = 32;
+        y = 54;
+    }
+    else if(cell == 9){
+        x = 54;
+        y = 54;
+    }
+    dsCircle(x, y - 1, 6, 0.5, 0, 255, 0);
+    return;
+}
+end:
