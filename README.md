@@ -63,10 +63,15 @@ link here: [wiremod forums: worker-project-collaborative-project](https://web.ar
 - Techni (discussion required)
 
 ## Code
-Our pastebin can be found here: MADE PRIVATE AGAIN DUE TO A GRIEFER. SORRY.
-Our Google Code can be found here: https://code.google.com/p/workers-project/
-The beta code SVN has not been released yet. If you want to be a member of the project, you might also want to make a Google account. (I believe YouTube accounts work for Google products)
-More information coming soon!
+- Our pastebin can be found here:
+  MADE PRIVATE AGAIN DUE TO A GRIEFER. SORRY.
+  
+- Our Google Code can be found here:
+  https://code.google.com/p/workers-project/
+  
+- The beta code SVN has not been released yet. If you want to be a member of the project, you might also want to make a Google account. (I believe YouTube accounts work for Google products)
+
+- More information coming soon!
 
 ---
 
@@ -77,3 +82,4 @@ You can find the thread here: http://www.wiremod.com/forum/expression-2-discussi
 
 <!-- IMAGE REFERENCES -->
 [Logo]: https://github.com/GMod-Creativity/workers-project/blob/main/assets/images/logo.png
+
