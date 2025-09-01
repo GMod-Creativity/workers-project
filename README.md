@@ -9,6 +9,9 @@
 
 link here: [wiremod forums: worker-project-collaborative-project](https://web.archive.org/web/20120103135739/http://www.wiremod.com/forum/expression-2-discussion-help/24826-worker-project-collaborative-project.html)
 
+## Captain Bonkers’ comment on the project status – April 9, 2011
+Sorry guys, Worker Project progress has been delayed temporarily. Don't despair.
+
 ## Questions and Answers (FAQs)
 
 - **What is this project?**  
@@ -82,4 +85,5 @@ You can find the thread here: http://www.wiremod.com/forum/expression-2-discussi
 
 <!-- IMAGE REFERENCES -->
 [Logo]: https://github.com/GMod-Creativity/workers-project/blob/main/assets/images/logo.png
+
 
